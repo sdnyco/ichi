@@ -8,6 +8,20 @@
       "when": 1766504598630,
       "tag": "0000_needy_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766508209530,
+      "tag": "0001_familiar_anita_blake",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766508885912,
+      "tag": "0002_adorable_dagger",
+      "breakpoints": true
     }
   ]
 }

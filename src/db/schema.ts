@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm"
 import {
   boolean,
   index,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -93,6 +94,9 @@ export const checkIns = pgTable(
       .notNull()
       .defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    durationMinutes: integer("duration_minutes"),
+    mood: text("mood").notNull(),
+    recognizabilityHint: text("recognizability_hint"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

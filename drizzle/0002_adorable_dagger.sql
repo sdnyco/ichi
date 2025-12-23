@@ -1,0 +1,1 @@
+ALTER TABLE "check_ins" ALTER COLUMN "mood" DROP DEFAULT;

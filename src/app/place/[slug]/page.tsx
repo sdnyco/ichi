@@ -1,6 +1,7 @@
 import { headers } from "next/headers"
 import { notFound } from "next/navigation"
 
+import { CheckInFlow } from "@/components/check-in-flow"
 import { getActiveGalleryForPlace, getPlaceBySlug } from "@/db/queries/places"
 import { getLocaleFromHeaders, t, type Locale } from "@/lib/i18n"
 
@@ -34,6 +35,10 @@ export default async function PlacePage({ params }: PlacePageProps) {
           <p className="text-base text-zinc-600">{place.addressText}</p>
         ) : null}
       </header>
+
+      <section>
+        <CheckInFlow placeId={place.id} locale={locale} />
+      </section>
 
       <section className="space-y-4">
         <div className="flex items-baseline justify-between gap-2">

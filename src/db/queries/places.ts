@@ -1,4 +1,4 @@
-import { and, asc, eq, gt } from "drizzle-orm"
+import { and, desc, eq, gt } from "drizzle-orm"
 
 import { db } from "@/db"
 import { checkIns, placeProfiles, places } from "@/db/schema"
@@ -56,7 +56,7 @@ export async function getActiveGalleryForPlace(
       ),
     )
     .where(and(eq(checkIns.placeId, placeId), gt(checkIns.expiresAt, now)))
-    .orderBy(asc(checkIns.startedAt))
+    .orderBy(desc(checkIns.startedAt))
 
   return rows
 }
