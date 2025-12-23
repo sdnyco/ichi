@@ -1,0 +1,11 @@
+{
+  "app.name": "ichi",
+  "place.header.label": "Ort",
+  "place.gallery.heading": "Jetzt an diesem Ort",
+  "place.gallery.count": "{count} aktiv",
+  "place.gallery.empty": "Gerade keine aktiven Check-ins.",
+  "place.gallery.meta": "Gestartet {started} • endet {expires}",
+  "time.relative.justNow": "soeben",
+  "time.relative.pastMinutes": "vor {count} Min.",
+  "time.relative.futureMinutes": "in {count} Min."
+}

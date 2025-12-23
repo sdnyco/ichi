@@ -1,0 +1,11 @@
+{
+  "app.name": "ichi",
+  "place.header.label": "Place",
+  "place.gallery.heading": "Now at this place",
+  "place.gallery.count": "{count} active",
+  "place.gallery.empty": "No one is checked in right now.",
+  "place.gallery.meta": "Started {started} • Ends {expires}",
+  "time.relative.justNow": "just now",
+  "time.relative.pastMinutes": "{count}m ago",
+  "time.relative.futureMinutes": "in {count}m"
+}
