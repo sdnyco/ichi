@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -65,6 +66,7 @@ export const placeProfiles = pgTable(
     alias: text("alias").notNull(),
     aliasGenerated: boolean("alias_generated").notNull().default(false),
     anchored: boolean("anchored").notNull().default(false),
+    lastHooks: jsonb("last_hooks").$type<string[] | null>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -97,6 +99,10 @@ export const checkIns = pgTable(
     durationMinutes: integer("duration_minutes"),
     mood: text("mood").notNull(),
     recognizabilityHint: text("recognizability_hint"),
+    hooks: jsonb("hooks").$type<string[] | null>(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -108,6 +114,20 @@ export const checkIns = pgTable(
     ),
   }),
 )
+
+export const userTraits = pgTable("user_traits", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  ageBand: text("age_band"),
+  heightCm: integer("height_cm"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
 
 export const placeRelations = relations(places, ({ many }) => ({
   portals: many(portals),
@@ -122,9 +142,13 @@ export const portalRelations = relations(portals, ({ one }) => ({
   }),
 }))
 
-export const userRelations = relations(users, ({ many }) => ({
+export const userRelations = relations(users, ({ many, one }) => ({
   profiles: many(placeProfiles),
   checkIns: many(checkIns),
+  traits: one(userTraits, {
+    fields: [users.id],
+    references: [userTraits.userId],
+  }),
 }))
 
 export const placeProfileRelations = relations(placeProfiles, ({ one }) => ({
@@ -149,8 +173,16 @@ export const checkInRelations = relations(checkIns, ({ one }) => ({
   }),
 }))
 
+export const userTraitRelations = relations(userTraits, ({ one }) => ({
+  user: one(users, {
+    fields: [userTraits.userId],
+    references: [users.id],
+  }),
+}))
+
 export type Place = typeof places.$inferSelect
 export type Portal = typeof portals.$inferSelect
 export type User = typeof users.$inferSelect
 export type PlaceProfile = typeof placeProfiles.$inferSelect
 export type CheckIn = typeof checkIns.$inferSelect
+export type UserTrait = typeof userTraits.$inferSelect

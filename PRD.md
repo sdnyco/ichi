@@ -1,12 +1,3 @@
-😄 Fair enough — you’re optimizing for *shipping*, not for moral virtue. I’ll take the keyboard.
-
-Below is a **clean, production-oriented PRD** you can copy-paste directly into `PRD.md`.
-It is intentionally **concise but complete**, biased toward *decisions*, *constraints*, and *non-goals*, not prose.
-
-I’ve written it the way a good future-you (or Cursor) would want to read it when making implementation calls.
-
----
-
 # ichi — Product Requirements Document (PRD)
 
 **Status:** Draft (v0.1)

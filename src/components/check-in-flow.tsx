@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
 import { WheelPicker, WheelPickerWrapper } from "@/components/wheel-picker"
@@ -19,6 +19,16 @@ type CheckInFlowProps = {
   locale: Locale
 }
 
+type PlaceContextActiveCheckin = {
+  id: string
+  startedAt: string
+  expiresAt: string
+}
+
+type PlaceContextResponse = {
+  activeCheckin: PlaceContextActiveCheckin | null
+}
+
 const STEP_IDS = ["duration", "mood", "hint", "alias"] as const
 
 export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
@@ -34,8 +44,40 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [activeCheckin, setActiveCheckin] =
+    useState<PlaceContextActiveCheckin | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
   const currentStepId = STEP_IDS[stepIndex]
+  const refreshActiveCheckin = useCallback(async () => {
+    if (!userId) return
+    try {
+      const params = new URLSearchParams({ placeId, userId })
+      const response = await fetch(`/api/me/place-context?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error("place_context_failed")
+      }
+      const data = (await response.json()) as PlaceContextResponse
+      setActiveCheckin(data.activeCheckin)
+    } catch (err) {
+      console.error(err)
+    }
+  }, [placeId, userId])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    setUserId(getOrCreateLocalUserId())
+  }, [])
+
+  useEffect(() => {
+    void refreshActiveCheckin()
+  }, [refreshActiveCheckin])
+
+  useEffect(() => {
+    if (activeCheckin && isOpen) {
+      setIsOpen(false)
+    }
+  }, [activeCheckin, isOpen])
 
   const durationOptions = useMemo(
     () =>
@@ -68,10 +110,13 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
   }
 
   function handleSubmit() {
+    if (!userId) {
+      setUserId(getOrCreateLocalUserId())
+      return
+    }
     setError(null)
     startTransition(async () => {
       try {
-        const userId = getOrCreateLocalUserId()
         const response = await fetch("/api/check-ins", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -85,6 +130,12 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
           }),
         })
 
+        if (response.status === 409) {
+          setError(t(locale, "checkin.status.blocked"))
+          await refreshActiveCheckin()
+          return
+        }
+
         if (!response.ok) {
           setError(t(locale, "checkin.status.error"))
           return
@@ -95,6 +146,7 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
         setStepIndex(0)
         setRecognizabilityHint("")
         setAlias(generateAlias())
+        await refreshActiveCheckin()
         router.refresh()
       } catch (err) {
         console.error(err)
@@ -124,13 +176,19 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
           type="button"
           onClick={handleToggle}
           className="rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-60"
-          disabled={isPending}
+          disabled={isPending || Boolean(activeCheckin) || !userId}
         >
           {isOpen
             ? t(locale, "checkin.cta.close")
             : t(locale, "checkin.cta.open")}
         </button>
       </div>
+
+      {activeCheckin ? (
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {t(locale, "checkin.status.blocked")}
+        </p>
+      ) : null}
 
       {success ? (
         <p className="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">

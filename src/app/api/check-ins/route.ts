@@ -3,7 +3,6 @@ import { NextResponse } from "next/server"
 import { db } from "@/db"
 import {
   createCheckin,
-  expireActiveCheckinsForUser,
   getOrCreatePlaceProfile,
   getOrCreateUserId,
   updatePlaceProfileAlias,
@@ -44,9 +43,25 @@ export async function POST(request: Request) {
     const expiresAt = new Date(now.getTime() + body.durationMinutes * 60_000)
 
     await getOrCreateUserId(body.userId)
+    const activeCheckin = await db.query.checkIns.findFirst({
+      where: (tbl, operators) =>
+        operators.and(
+          operators.eq(tbl.userId, body.userId),
+          operators.eq(tbl.placeId, body.placeId),
+          operators.gt(tbl.expiresAt, now),
+        ),
+      columns: { id: true },
+    })
+
+    if (activeCheckin) {
+      return NextResponse.json(
+        { ok: false, code: "ALREADY_CHECKED_IN" },
+        { status: 409 },
+      )
+    }
+
     await getOrCreatePlaceProfile(body.userId, body.placeId)
     await updatePlaceProfileAlias(body.userId, body.placeId, body.alias)
-    await expireActiveCheckinsForUser(body.userId, now)
     await createCheckin({
       userId: body.userId,
       placeId: body.placeId,

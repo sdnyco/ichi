@@ -131,36 +131,61 @@ A new user can scan a portal and check in immediately (lowest-friction onboardin
 
 ---
 
-### M4 — Profile Editing (Ephemeral vs Persistent Sections)
+## M4 — Expanded Profile (Editable)
 
-**Intent**
-The expanded “my card” overlay becomes the editing surface; no separate editor page.
+### M4a — Profile Data & CRUD Plumbing (Business Logic First)
+
+**Intent**  
+Make the expanded profile card functional and stateful.  
+Primary goal: validate correctness of persistence, reflection, and reload behavior — not visual fidelity.
 
 **Scope**
+- Expanded profile surface opens from “your card”
+- Editable fields (auto-save, debounced):
+  - Alias (place-profile scoped)
+  - Mood (active check-in scoped)
+  - Recognizability hint (active check-in scoped)
+  - Hooks (active check-in scoped; seeded from last known state)
+  - Age band (persistent)
+  - Height (persistent)
+- Auto-save with debounce and passive feedback (“Saving… / Saved / Error”)
+- Changes must:
+  - Persist after closing/reopening the profile
+  - Reflect immediately in the place gallery where relevant (e.g. alias)
+  - Survive page refresh
 
-* Expanded overlay supports explicit “Edit mode”
-* Fields split by time horizon:
-
-  * **Check-In Info (ephemeral)**: hooks, recognizability hint, mood
-  * **General (persistent, place-profile)**: age band, gender (optional), height, availability (if introduced here)
-* Save behavior:
-
-  * explicit Save / Done
-  * clear “editing” state
-* Hooks live in **ephemeral** check-in section (MVP choice)
+**Non-goals**
+- UI polish or mockup fidelity
+- Animations or transitions
+- Anchoring logic expansion
+- Pings or notifications
 
 **Definition of Done**
+- All fields round-trip correctly via DB
+- No manual Save buttons required
+- Expanded profile can be used end-to-end to update state
 
-* User can modify ephemeral data during an active check-in
-* User can modify persistent place-profile data any time
-* Changes render correctly in gallery/expanded views
-* No confusing cross-place propagation
+---
 
-**Explicitly Not Included**
+### M4b — Expanded Profile UI Fidelity
 
-* “Global” profile settings beyond minimal user account
-* Anchoring triggers
-* Reporting/blocking (M5)
+**Intent**  
+Bring the expanded profile card in line with the designed mockups using shadcn-friendly primitives.
+
+**Scope**
+- Layout, spacing, hierarchy, typography
+- Clear separation of ephemeral vs persistent sections
+- Refined affordances (e.g. Back vs X, input sizing)
+- Saved-state indicator polish
+
+**Hard Constraints**
+- No schema changes
+- No new APIs
+- No behavioral changes
+
+**Definition of Done**
+- Expanded profile visually matches approved mockups
+- Interaction remains identical to M4a
 
 ---
 

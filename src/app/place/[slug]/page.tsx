@@ -2,6 +2,7 @@ import { headers } from "next/headers"
 import { notFound } from "next/navigation"
 
 import { CheckInFlow } from "@/components/check-in-flow"
+import { ExpandedProfileSheet } from "@/components/expanded-profile-sheet"
 import { getActiveGalleryForPlace, getPlaceBySlug } from "@/db/queries/places"
 import { getLocaleFromHeaders, t, type Locale } from "@/lib/i18n"
 
@@ -36,8 +37,13 @@ export default async function PlacePage({ params }: PlacePageProps) {
         ) : null}
       </header>
 
-      <section>
+      <section className="space-y-4">
         <CheckInFlow placeId={place.id} locale={locale} />
+        <ExpandedProfileSheet
+          placeId={place.id}
+          placeName={place.name}
+          locale={locale}
+        />
       </section>
 
       <section className="space-y-4">
