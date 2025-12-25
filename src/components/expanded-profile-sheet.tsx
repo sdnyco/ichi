@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
-import { RefreshCw, X } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { HooksPicker } from "@/components/profile/hooks-picker"
@@ -245,6 +245,10 @@ export function ExpandedProfileSheet({
     saved: t(locale, "profile.status.saved"),
     error: t(locale, "profile.status.error"),
   }[saveBadge]
+
+  const checkInMeta = hasActiveCheckin
+    ? buildCheckInMeta(activeCheckin, placeName)
+    : null
 
   const handleRegenerateAlias = useCallback(() => {
     if (!hasPlaceProfile || !userId) return
@@ -493,50 +497,54 @@ export function ExpandedProfileSheet({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" />
         <Dialog.Content className="fixed inset-0 z-50 overflow-hidden focus:outline-none">
           <div className="flex h-full flex-col bg-zinc-950 text-zinc-50">
-            <SaveStatusBar status={saveBadge} label={badgeLabel} />
+            <SaveStatusBar
+              status={saveBadge}
+              label={badgeLabel}
+              backLabel={t(locale, "profile.back")}
+              onBack={() => setIsOpen(false)}
+            />
             <div className="flex-1 overflow-y-auto">
               <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-6 py-10">
                 <Dialog.Title className="sr-only">
                   {t(locale, "profile.sheet.title")}
                 </Dialog.Title>
-                <div className="flex items-start justify-between gap-6">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-400">
-                      {t(locale, "profile.placeSection")}
-                    </p>
-                    <h1 className="text-3xl font-semibold text-white">
-                      {aliasValue || t(locale, "profile.alias.placeholder")}
-                    </h1>
-                    <p className="mt-2 text-sm text-zinc-400">
-                      {t(locale, "profile.overlay.subtitle", {
-                        place: placeName,
-                      })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-zinc-400">
+                        {t(locale, "profile.alias.title")}
+                      </p>
+                      <h1 className="text-4xl font-semibold text-white">
+                        {aliasValue || t(locale, "profile.alias.placeholder")}
+                      </h1>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      disabled={
-                        !hasPlaceProfile || !userId || isAliasUpdating
-                      }
+                      disabled={!hasPlaceProfile || !userId || isAliasUpdating}
                       onClick={handleRegenerateAlias}
                       className="inline-flex items-center gap-2 text-white"
                     >
                       <RefreshCw className="h-4 w-4" />
                       {t(locale, "profile.alias.regenerate")}
                     </Button>
-                    <Dialog.Close asChild>
-                      <button
-                        type="button"
-                        className="rounded-full border border-white/20 p-2 text-white transition hover:border-white/60"
-                        aria-label={t(locale, "profile.overlay.close")}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </Dialog.Close>
                   </div>
+                  {checkInMeta ? (
+                    <div className="space-y-3 rounded-3xl border border-dashed border-white/20 bg-white/5 p-5">
+                      <p className="text-sm text-zinc-100">
+                        {t(locale, "profile.checkin.status", checkInMeta)}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button variant="secondary" size="sm" disabled>
+                          {t(locale, "profile.checkin.checkout")}
+                        </Button>
+                        <span className="text-xs text-zinc-400">
+                          {t(locale, "profile.checkin.comingSoon")}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 {isLoading ? (
@@ -609,33 +617,35 @@ export function ExpandedProfileSheet({
                             })}
                           </p>
                         </div>
+
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-zinc-400">
+                                {t(locale, "profile.hooks.label")}
+                              </p>
+                              <h3 className="text-xl font-semibold text-white">
+                                {t(locale, "profile.hooks.helper")}
+                              </h3>
+                            </div>
+                            {!hasActiveCheckin ? (
+                              <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
+                                {t(locale, "profile.hooks.disabled")}
+                              </span>
+                            ) : null}
+                          </div>
+                          <HooksPicker
+                            locale={locale}
+                            selected={hooksValue}
+                            max={MAX_HOOKS}
+                            disabled={!hasActiveCheckin}
+                            onChange={setHooksValue}
+                          />
+                        </div>
                       </div>
                     </section>
 
-                    <section className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-zinc-400">
-                            {t(locale, "profile.hooks.label")}
-                          </p>
-                          <h2 className="text-2xl font-semibold text-white">
-                            {t(locale, "profile.hooks.helper")}
-                          </h2>
-                        </div>
-                        {!hasActiveCheckin ? (
-                          <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
-                            {t(locale, "profile.hooks.disabled")}
-                          </span>
-                        ) : null}
-                      </div>
-                      <HooksPicker
-                        locale={locale}
-                        selected={hooksValue}
-                        max={MAX_HOOKS}
-                        disabled={!hasActiveCheckin}
-                        onChange={setHooksValue}
-                      />
-                    </section>
+                    <div className="border-t border-dashed border-white/15" />
 
                     <section className="space-y-6">
                       <div>
@@ -713,5 +723,32 @@ export function ExpandedProfileSheet({
       </Dialog.Portal>
     </Dialog.Root>
   )
+}
+
+function buildCheckInMeta(activeCheckin: ActiveCheckin, placeName: string) {
+  const now = Date.now()
+  const startedMinutes = Math.max(
+    0,
+    Math.round((now - new Date(activeCheckin.startedAt).getTime()) / 60000),
+  )
+  const remainingMinutes = Math.max(
+    0,
+    Math.round((new Date(activeCheckin.expiresAt).getTime() - now) / 60000),
+  )
+
+  return {
+    place: placeName,
+    minutesAgo: String(startedMinutes),
+    minutesRemaining: String(remainingMinutes),
+    remainingFormatted: formatDurationToken(remainingMinutes),
+  }
+}
+
+function formatDurationToken(minutes: number): string {
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60)
+    return `${hours}h`
+  }
+  return `${minutes}m`
 }
 

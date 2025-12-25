@@ -1,6 +1,18 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import {
+  MessageCircle,
+  Utensils,
+  Music4,
+  Sparkles,
+  Palette,
+  Mountain,
+  Dumbbell,
+  Cpu,
+  Landmark,
+  type LucideIcon,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import {
@@ -49,25 +61,40 @@ export function HooksPicker({
     onChange([...selected, hookId])
   }
 
+  const CATEGORY_ICONS: Record<HookCategoryId, LucideIcon> = {
+    openers: MessageCircle,
+    food_drink: Utensils,
+    music: Music4,
+    nightlife: Sparkles,
+    arts_design: Palette,
+    outdoors: Mountain,
+    movement_sports: Dumbbell,
+    tech_creative: Cpu,
+    local_culture: Landmark,
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {HOOK_CATEGORY_IDS.map((categoryId) => {
           const label = t(locale, HOOK_CATEGORY_LABEL_KEYS[categoryId])
           const isActive = activeCategory === categoryId
+          const Icon = CATEGORY_ICONS[categoryId]
           return (
             <button
               key={categoryId}
               type="button"
               onClick={() => setActiveCategory(categoryId)}
               className={cn(
-                "rounded-full border px-4 py-2 text-sm font-medium transition",
+                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
                 isActive
-                  ? "border-white bg-white/10 text-white"
-                  : "border-white/20 text-zinc-300 hover:border-white/50",
+                  ? "border-white bg-white text-zinc-900 shadow"
+                  : "border-white/30 text-zinc-200 hover:border-white/60",
               )}
+              aria-pressed={isActive}
             >
-              {label}
+              <Icon className={cn("h-4 w-4", isActive ? "text-zinc-900" : "text-white")} />
+              <span>{label}</span>
             </button>
           )
         })}

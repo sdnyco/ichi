@@ -10,10 +10,33 @@ type PlacePageProps = {
   params: Promise<{
     slug: string
   }>
+  searchParams?: Promise<Record<string, string | string[]>>
 }
 
-export default async function PlacePage({ params }: PlacePageProps) {
+function getParamValue(
+  params: Record<string, string | string[]> | undefined,
+  key: string,
+): string | null {
+  if (!params) return null
+  const raw = params[key]
+  if (!raw) return null
+  return Array.isArray(raw) ? raw[0] ?? null : raw
+}
+
+function extractLocaleOverride(
+  searchParams?: Record<string, string | string[]>,
+): string | null {
+  const lang = getParamValue(searchParams, "lang")
+  const locale = getParamValue(searchParams, "locale")
+  return lang ?? locale
+}
+
+export default async function PlacePage({
+  params,
+  searchParams,
+}: PlacePageProps) {
   const { slug } = await params
+  const query = searchParams ? await searchParams : undefined
 
   const place = await getPlaceBySlug(slug)
 
@@ -23,7 +46,10 @@ export default async function PlacePage({ params }: PlacePageProps) {
 
   const now = new Date()
   const gallery = await getActiveGalleryForPlace(place.id, now)
-  const locale = getLocaleFromHeaders(await headers())
+  const locale = getLocaleFromHeaders(
+    await headers(),
+    extractLocaleOverride(query),
+  )
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-10 px-6 py-12">
