@@ -22,6 +22,7 @@ import { MAX_HINT_LENGTH, MOOD_OPTIONS } from "@/lib/checkins"
 import { AGE_BANDS, MAX_HOOKS } from "@/lib/profile"
 import { getOrCreateLocalUserId } from "@/lib/identity"
 import { t, type Locale } from "@/lib/i18n"
+import { formatDurationToken } from "@/lib/time"
 import { cn } from "@/lib/utils"
 
 type PlaceContextResponse = {
@@ -737,17 +738,5 @@ function buildCheckInMeta(activeCheckin: ActiveCheckin, placeName: string) {
     agoFormatted: formatDurationToken(startedMinutes),
     remainingFormatted: formatDurationToken(remainingMinutes),
   }
-}
-
-function formatDurationToken(minutes: number): string {
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60)
-    const remainder = minutes % 60
-    if (remainder === 0) {
-      return `${hours}h`
-    }
-    return `${hours}h ${remainder}m`
-  }
-  return `${minutes}m`
 }
 

@@ -147,5 +147,8 @@
   "profile.hooks.label.localCulture.fleaMarket": "Flea market browse",
   "profile.hooks.label.localCulture.bestSaunas": "Best saunas & spas?",
   "profile.hooks.label.localCulture.bookshopCrawl": "Bookshop crawl",
-  "profile.hooks.label.localCulture.kiezStory": "Your favorite Kiez story"
+  "profile.hooks.label.localCulture.kiezStory": "Your favorite Kiez story",
+  "profile.readonly.noData": "Not shared",
+  "profile.readonly.noHint": "No recognizability hint yet.",
+  "profile.readonly.noHooks": "No hooks shared."
 }

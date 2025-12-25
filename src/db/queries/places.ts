@@ -12,6 +12,7 @@ export type PlaceRecord = {
 
 export type PlaceGalleryEntry = {
   id: string
+  userId: string
   alias: string
   aliasGenerated: boolean
   anchored: boolean
@@ -41,6 +42,7 @@ export async function getActiveGalleryForPlace(
   const rows = await db
     .select({
       id: checkIns.id,
+      userId: checkIns.userId,
       startedAt: checkIns.startedAt,
       expiresAt: checkIns.expiresAt,
       alias: placeProfiles.alias,

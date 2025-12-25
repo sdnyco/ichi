@@ -292,3 +292,86 @@ Make it operationally deployable across multiple real places.
 * Cursor will generate implementation runs; each run must be captured via the delivery note convention above.
 
 ---
+
+## Pre-MVP Backlog (Non-Blocking)
+
+These items are **explicitly out of MVP scope**, but should be revisited and consciously decided on before launch. None of them block M5 or M6.
+
+### UI / Interaction Refinements
+
+* [ ] Replace numeric inputs for **Age band** and **Height** with iOS-style wheel pickers
+
+  * Reuse existing wheel picker infra if possible
+  * Validate mobile ergonomics (thumb reach, scroll friction)
+* [ ] Revisit **global Save State bar** copy + color semantics
+
+  * Final wording for: `Idle`, `Saving…`, `Saved`, `Error`
+  * Confirm contrast/accessibility in bright outdoor conditions
+* [ ] Micro-copy pass across profile questions
+
+  * Especially Mood / Recognizability / Hooks headings
+  * Ensure tone consistency (conversational, non-instructional)
+
+### Hooks System (Conceptual, Not Structural)
+
+* [ ] Re-evaluate **Hooks taxonomy** based on early usage
+
+  * Are categories meaningful or ignored?
+  * Are some hooks never selected?
+* [ ] Decide whether to split Hooks into clearer “jobs”:
+
+  * *Vibe signal* (interest / energy / headspace)
+  * *Invitation* (what I’m open to doing)
+* [ ] Consider future variants:
+
+  * City-scoped hooks
+  * Venue-scoped hooks
+  * Time-of-day or context-sensitive suggestions
+* [ ] Validate max hooks limit (currently 10) against real behavior
+
+### Profile & Navigation
+
+* [ ] Decide whether expanded profile should ever get a **dedicated URL**
+
+  * Current overlay/page hybrid is acceptable for MVP
+* [ ] Enable opening **own profile by tapping own gallery card**
+
+  * Non-critical, but improves mental model consistency
+* [ ] Revisit alias regeneration affordance
+
+  * Confirm placement, frequency expectations, and feedback timing
+
+### Internationalization / Dev Ergonomics
+
+* [ ] Add explicit **language override query param** (e.g. `?lang=en`)
+
+  * Dev-only or hidden feature is fine
+  * Do not remove Accept-Language auto-detection
+* [ ] Final check for German copy expansion edge cases
+
+  * Long compound words
+  * Button truncation on small screens
+
+### Check-in Lifecycle (Later Decisions)
+
+* [ ] Define final **Check-out semantics**
+
+  * Manual vs automatic only
+  * Visibility after checkout
+* [ ] Decide if Anchoring is:
+
+  * A separate action
+  * A post-check-in modifier
+  * Or a future feature entirely
+
+---
+
+### Explicitly Not In Scope (for now)
+
+* Auth / account system
+* Cross-device persistence
+* Profile history or analytics
+* Social graph / following
+* Messaging
+
+---

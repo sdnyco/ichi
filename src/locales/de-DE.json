@@ -147,5 +147,8 @@
   "profile.hooks.label.localCulture.fleaMarket": "Flohmarkt-Bummel",
   "profile.hooks.label.localCulture.bestSaunas": "Beste Saunen & Spas?",
   "profile.hooks.label.localCulture.bookshopCrawl": "Bookshop Crawl",
-  "profile.hooks.label.localCulture.kiezStory": "Deine liebste Kiez-Story"
+  "profile.hooks.label.localCulture.kiezStory": "Deine liebste Kiez-Story",
+  "profile.readonly.noData": "Keine Angabe",
+  "profile.readonly.noHint": "Kein Hinweis geteilt.",
+  "profile.readonly.noHooks": "Keine Hooks geteilt."
 }

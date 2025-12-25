@@ -3,8 +3,9 @@ import { notFound } from "next/navigation"
 
 import { CheckInFlow } from "@/components/check-in-flow"
 import { ExpandedProfileSheet } from "@/components/expanded-profile-sheet"
+import { PlaceGallery } from "@/components/place-gallery"
 import { getActiveGalleryForPlace, getPlaceBySlug } from "@/db/queries/places"
-import { getLocaleFromHeaders, t, type Locale } from "@/lib/i18n"
+import { getLocaleFromHeaders, t } from "@/lib/i18n"
 
 type PlacePageProps = {
   params: Promise<{
@@ -84,47 +85,13 @@ export default async function PlacePage({
           </span>
         </div>
 
-        {gallery.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
-            {t(locale, "place.gallery.empty")}
-          </p>
-        ) : (
-          <ul className="space-y-4">
-            {gallery.map((entry) => (
-              <li
-                key={entry.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
-              >
-                <p className="text-lg font-medium text-zinc-900">
-                  {entry.alias}
-                </p>
-                <p className="text-sm text-zinc-500">
-                  {t(locale, "place.gallery.meta", {
-                    started: formatRelativeTime(entry.startedAt, now, locale),
-                    expires: formatRelativeTime(entry.expiresAt, now, locale),
-                  })}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
+        <PlaceGallery
+          entries={gallery}
+          placeId={place.id}
+          placeName={place.name}
+          locale={locale}
+        />
       </section>
     </div>
   )
 }
-
-function formatRelativeTime(target: Date, now: Date, locale: Locale): string {
-  const diffMs = target.getTime() - now.getTime()
-  const minutes = Math.round(Math.abs(diffMs) / 60000)
-
-  if (minutes === 0) {
-    return t(locale, "time.relative.justNow")
-  }
-
-  if (diffMs > 0) {
-    return t(locale, "time.relative.futureMinutes", { count: String(minutes) })
-  }
-
-  return t(locale, "time.relative.pastMinutes", { count: String(minutes) })
-}
-

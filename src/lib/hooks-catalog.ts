@@ -329,6 +329,14 @@ export const HOOKS_BY_CATEGORY: Record<HookCategoryId, HookCatalogEntry[]> =
     {} as Record<HookCategoryId, HookCatalogEntry[]>,
   )
 
+export const HOOK_LABEL_BY_ID = HOOK_CATALOG.reduce<Record<string, string>>(
+  (acc, entry) => {
+    acc[entry.id] = entry.labelKey
+    return acc
+  },
+  {},
+)
+
 export const HOOK_TYPE_LABEL_KEYS: Record<HookType, string> = {
   global: "profile.hooks.type.global",
   city: "profile.hooks.type.city",
