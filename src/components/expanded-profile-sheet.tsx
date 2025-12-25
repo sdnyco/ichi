@@ -557,52 +557,48 @@ export function ExpandedProfileSheet({
                   </div>
                 ) : (
                   <>
-                    <section className="space-y-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-zinc-400">
-                          {t(locale, "profile.activeSection")}
-                        </p>
-                        <h2 className="text-2xl font-semibold text-white">
-                          {t(locale, "profile.active.title")}
-                        </h2>
-                        {!hasActiveCheckin ? (
-                          <p className="mt-1 text-sm text-zinc-400">
-                            {t(locale, "profile.noActive")}
+                    <section className="space-y-12">
+                      <div className="space-y-6">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-zinc-400">
+                            {t(locale, "profile.mood.label")}
                           </p>
-                        ) : null}
+                          <h2 className="text-2xl font-semibold text-white">
+                            {t(locale, "profile.mood.title")}
+                          </h2>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {MOOD_OPTIONS.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              disabled={!hasActiveCheckin}
+                              onClick={() => setMoodValue(option.id)}
+                              className={cn(
+                                "rounded-2xl border px-4 py-3 text-left text-sm font-medium transition",
+                                moodValue === option.id
+                                  ? "border-white bg-white text-zinc-900"
+                                  : "border-white/20 text-white hover:border-white/60",
+                                !hasActiveCheckin &&
+                                  "cursor-not-allowed opacity-40",
+                              )}
+                            >
+                              {t(locale, option.labelKey)}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
-                      <div className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium uppercase tracking-wide text-zinc-400">
-                            {t(locale, "profile.mood.label")}
-                          </label>
-                          <div className="grid grid-cols-2 gap-3">
-                            {MOOD_OPTIONS.map((option) => (
-                              <button
-                                key={option.id}
-                                type="button"
-                                disabled={!hasActiveCheckin}
-                                onClick={() => setMoodValue(option.id)}
-                                className={cn(
-                                  "rounded-2xl border px-4 py-3 text-left text-sm font-medium transition",
-                                  moodValue === option.id
-                                    ? "border-white bg-white text-zinc-900"
-                                    : "border-white/20 text-white hover:border-white/60",
-                                  !hasActiveCheckin &&
-                                    "cursor-not-allowed opacity-40",
-                                )}
-                              >
-                                {t(locale, option.labelKey)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium uppercase tracking-wide text-zinc-400">
+                      <div className="space-y-6">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-zinc-400">
                             {t(locale, "profile.recognizability.label")}
-                          </label>
+                          </p>
+                          <h2 className="text-2xl font-semibold text-white">
+                            {t(locale, "profile.recognizability.title")}
+                          </h2>
+                        </div>
+                        <div className="space-y-2">
                           <Textarea
                             value={hintValue}
                             maxLength={MAX_HINT_LENGTH}
@@ -617,31 +613,29 @@ export function ExpandedProfileSheet({
                             })}
                           </p>
                         </div>
+                      </div>
 
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs uppercase tracking-wide text-zinc-400">
-                                {t(locale, "profile.hooks.label")}
-                              </p>
-                              <h3 className="text-xl font-semibold text-white">
-                                {t(locale, "profile.hooks.helper")}
-                              </h3>
-                            </div>
-                            {!hasActiveCheckin ? (
-                              <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
-                                {t(locale, "profile.hooks.disabled")}
-                              </span>
-                            ) : null}
-                          </div>
-                          <HooksPicker
-                            locale={locale}
-                            selected={hooksValue}
-                            max={MAX_HOOKS}
-                            disabled={!hasActiveCheckin}
-                            onChange={setHooksValue}
-                          />
+                      <div className="space-y-6">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-zinc-400">
+                            {t(locale, "profile.hooks.label")}
+                          </p>
+                          <h2 className="text-2xl font-semibold text-white">
+                            {t(locale, "profile.hooks.helper")}
+                          </h2>
                         </div>
+                        {!hasActiveCheckin ? (
+                          <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
+                            {t(locale, "profile.hooks.disabled")}
+                          </span>
+                        ) : null}
+                        <HooksPicker
+                          locale={locale}
+                          selected={hooksValue}
+                          max={MAX_HOOKS}
+                          disabled={!hasActiveCheckin}
+                          onChange={setHooksValue}
+                        />
                       </div>
                     </section>
 
@@ -740,6 +734,7 @@ function buildCheckInMeta(activeCheckin: ActiveCheckin, placeName: string) {
     place: placeName,
     minutesAgo: String(startedMinutes),
     minutesRemaining: String(remainingMinutes),
+    agoFormatted: formatDurationToken(startedMinutes),
     remainingFormatted: formatDurationToken(remainingMinutes),
   }
 }
@@ -747,7 +742,11 @@ function buildCheckInMeta(activeCheckin: ActiveCheckin, placeName: string) {
 function formatDurationToken(minutes: number): string {
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60)
-    return `${hours}h`
+    const remainder = minutes % 60
+    if (remainder === 0) {
+      return `${hours}h`
+    }
+    return `${hours}h ${remainder}m`
   }
   return `${minutes}m`
 }
