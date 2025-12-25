@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
-import { and, eq, gt } from "drizzle-orm"
+import { and, eq, gt, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { checkIns, placeProfiles, places, userTraits } from "@/db/schema"
+import {
+  checkIns,
+  placeProfiles,
+  places,
+  userBlocks,
+  userTraits,
+} from "@/db/schema"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -38,6 +44,14 @@ export async function GET(request: Request) {
         ageBand: userTraits.ageBand,
         heightCm: userTraits.heightCm,
       },
+      isBlocked:
+        viewerUserId != null
+          ? sql<boolean>`EXISTS (
+              SELECT 1 FROM ${userBlocks} AS ub
+              WHERE ub.blocker_user_id = ${viewerUserId}
+              AND ub.blocked_user_id = ${targetUserId}
+            )`
+          : sql<boolean>`false`,
     })
     .from(checkIns)
     .innerJoin(places, eq(places.id, checkIns.placeId))
@@ -69,6 +83,7 @@ export async function GET(request: Request) {
     profile: row.profile,
     userTraits: row.traits,
     activeCheckin: row.checkIn,
+    isBlockedByViewer: row.isBlocked,
   })
 }
 

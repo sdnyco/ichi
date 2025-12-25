@@ -29,6 +29,20 @@
       "when": 1766584677012,
       "tag": "0003_young_scarlet_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1766679813954,
+      "tag": "0004_closed_anita_blake",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1766764800000,
+      "tag": "0005_internal_admin_panel",
+      "breakpoints": true
     }
   ]
 }

@@ -51,6 +51,10 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  isBanned: boolean("is_banned").notNull().default(false),
+  bannedAt: timestamp("banned_at", { withTimezone: true }),
+  banReason: text("ban_reason"),
 })
 
 export const placeProfiles = pgTable(
@@ -179,6 +183,62 @@ export const userTraitRelations = relations(userTraits, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+export const userBlocks = pgTable(
+  "user_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blockerUserId: uuid("blocker_user_id")
+      .notNull()
+      .references(() => users.id),
+    blockedUserId: uuid("blocked_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    uniquePair: uniqueIndex("user_blocks_unique_pair").on(
+      table.blockerUserId,
+      table.blockedUserId,
+    ),
+    blockerIdx: index("user_blocks_blocker_idx").on(table.blockerUserId),
+    blockedIdx: index("user_blocks_blocked_idx").on(table.blockedUserId),
+  }),
+)
+
+export const userReports = pgTable(
+  "user_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterUserId: uuid("reporter_user_id")
+      .notNull()
+      .references(() => users.id),
+    reportedUserId: uuid("reported_user_id")
+      .notNull()
+      .references(() => users.id),
+    placeId: uuid("place_id").references(() => places.id),
+    portalId: uuid("portal_id").references(() => portals.id),
+    checkInId: uuid("check_in_id").references(() => checkIns.id),
+    reasonCode: text("reason_code").notNull(),
+    freeText: text("free_text"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    status: text("status").notNull().default("new"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: text("resolved_by"),
+  },
+  (table) => ({
+    reporterIdx: index("user_reports_reporter_idx").on(table.reporterUserId),
+    reportedIdx: index("user_reports_reported_idx").on(table.reportedUserId),
+    createdIdx: index("user_reports_created_idx").on(table.createdAt),
+  }),
+)
+
+export type UserBlock = typeof userBlocks.$inferSelect
+export type UserReport = typeof userReports.$inferSelect
 
 export type Place = typeof places.$inferSelect
 export type Portal = typeof portals.$inferSelect

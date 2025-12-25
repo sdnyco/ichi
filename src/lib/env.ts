@@ -3,7 +3,8 @@ const envVars = {
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
   SUPABASE_ANON_KEY:
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
-  DATABASE_URL: process.env.DATABASE_URL ?? ''
+  DATABASE_URL: process.env.DATABASE_URL ?? '',
+  ADMIN_TOKEN: process.env.ADMIN_TOKEN ?? ''
 }
 
 type EnvVar = keyof typeof envVars

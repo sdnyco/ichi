@@ -43,6 +43,7 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
   const [alias, setAlias] = useState(() => generateAlias())
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [accountDisabled, setAccountDisabled] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [activeCheckin, setActiveCheckin] =
     useState<PlaceContextActiveCheckin | null>(null)
@@ -136,6 +137,20 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
           return
         }
 
+        if (response.status === 403) {
+          const data = (await response.json().catch(() => ({}))) as {
+            error?: string
+          }
+          if (data?.error === "account_disabled") {
+            setAccountDisabled(true)
+            setIsOpen(false)
+            setError(t(locale, "checkin.status.disabled"))
+            return
+          }
+          setError(t(locale, "checkin.status.error"))
+          return
+        }
+
         if (!response.ok) {
           setError(t(locale, "checkin.status.error"))
           return
@@ -176,7 +191,9 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
           type="button"
           onClick={handleToggle}
           className="rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:pointer-events-none disabled:opacity-60"
-          disabled={isPending || Boolean(activeCheckin) || !userId}
+          disabled={
+            isPending || Boolean(activeCheckin) || !userId || accountDisabled
+          }
         >
           {isOpen
             ? t(locale, "checkin.cta.close")
@@ -196,7 +213,13 @@ export function CheckInFlow({ placeId, locale }: CheckInFlowProps) {
         </p>
       ) : null}
 
-      {error ? (
+      {accountDisabled ? (
+        <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          {t(locale, "checkin.status.disabled")}
+        </p>
+      ) : null}
+
+      {error && !accountDisabled ? (
         <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </p>

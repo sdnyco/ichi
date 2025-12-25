@@ -1,6 +1,7 @@
 "use client"
 
 import { startTransition, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { OtherProfileSheet } from "@/components/profile/other-profile-sheet"
 import type { PlaceGalleryEntry } from "@/db/queries/places"
@@ -13,6 +14,7 @@ type PlaceGalleryProps = {
   placeId: string
   placeName: string
   locale: Locale
+  initialViewerUserId?: string | null
 }
 
 export function PlaceGallery({
@@ -20,10 +22,15 @@ export function PlaceGallery({
   placeId,
   placeName,
   locale,
+  initialViewerUserId,
 }: PlaceGalleryProps) {
-  const [viewerUserId, setViewerUserId] = useState<string | null>(null)
+  const router = useRouter()
+  const [viewerUserId, setViewerUserId] = useState<string | null>(
+    initialViewerUserId ?? null,
+  )
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [selectedCheckInId, setSelectedCheckInId] = useState<string | null>(null)
   useEffect(() => {
     if (viewerUserId) return
     startTransition(() => {
@@ -31,9 +38,10 @@ export function PlaceGallery({
     })
   }, [viewerUserId])
 
-  function handleCardClick(userId: string) {
+  function handleCardClick(userId: string, checkInId: string) {
     if (!userId) return
     setSelectedUserId(userId)
+    setSelectedCheckInId(checkInId)
     setIsProfileOpen(true)
   }
 
@@ -54,7 +62,7 @@ export function PlaceGallery({
             >
               <button
                 type="button"
-                onClick={() => handleCardClick(entry.userId)}
+                onClick={() => handleCardClick(entry.userId, entry.id)}
                 className="flex w-full flex-col items-start gap-1 text-left"
               >
                 <p className="text-lg font-medium text-zinc-900">
@@ -78,6 +86,7 @@ export function PlaceGallery({
           setIsProfileOpen(open)
           if (!open) {
             setSelectedUserId(null)
+            setSelectedCheckInId(null)
           }
         }}
         viewerUserId={viewerUserId ?? ""}
@@ -85,6 +94,13 @@ export function PlaceGallery({
         placeId={placeId}
         placeName={placeName}
         locale={locale}
+        checkInId={selectedCheckInId ?? undefined}
+        onBlocked={() => {
+          setIsProfileOpen(false)
+          setSelectedUserId(null)
+          setSelectedCheckInId(null)
+          router.refresh()
+        }}
       />
     </>
   )

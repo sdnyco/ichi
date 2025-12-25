@@ -85,6 +85,7 @@ export function ExpandedProfileSheet({
   const [userId, setUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [accountDisabled, setAccountDisabled] = useState(false)
 
   const [aliasValue, setAliasValue] = useState("")
   const [moodValue, setMoodValue] = useState(MOOD_OPTIONS[0].id)
@@ -201,7 +202,7 @@ export function ExpandedProfileSheet({
 
   const sendPatch = useCallback(
     async <T,>(endpoint: string, payload: Record<string, unknown>) => {
-      if (!userId) return null
+      if (!userId || accountDisabled) return null
       markSaving()
       try {
         const response = await fetch(endpoint, {
@@ -213,6 +214,9 @@ export function ExpandedProfileSheet({
           error?: string
         }
         if (!response.ok) {
+          if (json?.error === "account_disabled") {
+            setAccountDisabled(true)
+          }
           throw new Error(json?.error ?? "request_failed")
         }
         markSuccess()
@@ -222,7 +226,7 @@ export function ExpandedProfileSheet({
         throw error
       }
     },
-    [markError, markSaving, markSuccess, userId],
+    [accountDisabled, markError, markSaving, markSuccess, userId],
   )
 
   const activeCheckin = context?.activeCheckin ?? null
@@ -523,7 +527,12 @@ export function ExpandedProfileSheet({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      disabled={!hasPlaceProfile || !userId || isAliasUpdating}
+                      disabled={
+                        !hasPlaceProfile ||
+                        !userId ||
+                        isAliasUpdating ||
+                        accountDisabled
+                      }
                       onClick={handleRegenerateAlias}
                       className="inline-flex items-center gap-2 text-white"
                     >
@@ -548,7 +557,11 @@ export function ExpandedProfileSheet({
                   ) : null}
                 </div>
 
-                {isLoading ? (
+                {accountDisabled ? (
+                  <div className="rounded-3xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-100">
+                    {t(locale, "profile.status.disabled")}
+                  </div>
+                ) : isLoading ? (
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center text-sm text-zinc-200">
                     {t(locale, "profile.loading")}
                   </div>

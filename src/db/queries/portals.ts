@@ -40,3 +40,18 @@ export async function getPlaceByPortalCode(
   return record ?? null
 }
 
+export async function getPortalByCode(code: string) {
+  const [record] = await db
+    .select({
+      id: portals.id,
+      code: portals.code,
+      placeId: portals.placeId,
+      isEnabled: portals.isEnabled,
+    })
+    .from(portals)
+    .where(eq(portals.code, code))
+    .limit(1)
+
+  return record ?? null
+}
+

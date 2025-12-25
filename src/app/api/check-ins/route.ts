@@ -8,6 +8,11 @@ import {
   updatePlaceProfileAlias,
 } from "@/db/queries/checkins"
 import {
+  AccountDisabledError,
+  ensureUserNotBanned,
+  touchUserLastSeen,
+} from "@/db/queries/users"
+import {
   DURATION_MINUTES_SET,
   MAX_HINT_LENGTH,
   MOOD_ID_SET,
@@ -43,6 +48,7 @@ export async function POST(request: Request) {
     const expiresAt = new Date(now.getTime() + body.durationMinutes * 60_000)
 
     await getOrCreateUserId(body.userId)
+    await ensureUserNotBanned(body.userId)
     const activeCheckin = await db.query.checkIns.findFirst({
       where: (tbl, operators) =>
         operators.and(
@@ -72,8 +78,13 @@ export async function POST(request: Request) {
       recognizabilityHint: body.recognizabilityHint,
     })
 
+    await touchUserLastSeen(body.userId, now)
+
     return NextResponse.json({ ok: true })
   } catch (error) {
+    if (error instanceof AccountDisabledError) {
+      return NextResponse.json({ error: "account_disabled" }, { status: 403 })
+    }
     console.error(error)
     return NextResponse.json({ error: "unknown_error" }, { status: 500 })
   }

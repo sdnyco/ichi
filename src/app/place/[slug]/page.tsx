@@ -1,10 +1,11 @@
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { notFound } from "next/navigation"
 
 import { CheckInFlow } from "@/components/check-in-flow"
 import { ExpandedProfileSheet } from "@/components/expanded-profile-sheet"
 import { PlaceGallery } from "@/components/place-gallery"
 import { getActiveGalleryForPlace, getPlaceBySlug } from "@/db/queries/places"
+import { touchUserLastSeen } from "@/db/queries/users"
 import { getLocaleFromHeaders, t } from "@/lib/i18n"
 
 type PlacePageProps = {
@@ -46,7 +47,16 @@ export default async function PlacePage({
   }
 
   const now = new Date()
-  const gallery = await getActiveGalleryForPlace(place.id, now)
+  const viewerCookieStore = await cookies()
+  const viewerUserId = viewerCookieStore.get("ichi_user_id")?.value ?? null
+  if (viewerUserId) {
+    await touchUserLastSeen(viewerUserId, now)
+  }
+  const gallery = await getActiveGalleryForPlace(
+    place.id,
+    now,
+    viewerUserId ?? undefined,
+  )
   const locale = getLocaleFromHeaders(
     await headers(),
     extractLocaleOverride(query),
@@ -90,6 +100,7 @@ export default async function PlacePage({
           placeId={place.id}
           placeName={place.name}
           locale={locale}
+          initialViewerUserId={viewerUserId}
         />
       </section>
     </div>
