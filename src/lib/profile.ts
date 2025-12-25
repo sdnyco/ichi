@@ -8,17 +8,6 @@ export const HEIGHT_MAX_CM = 230
 export const MAX_HOOKS = 10
 export const MAX_HOOK_LENGTH = 60
 
-export const HOOK_SUGGESTIONS = [
-  "Up for a quick chat",
-  "Quiet company welcome",
-  "Heads-down but friendly",
-  "New here, say hi",
-  "Looking to collaborate",
-  "Happy to swap tips",
-] as const
-
-export type HookSuggestion = (typeof HOOK_SUGGESTIONS)[number]
-
 export type HookListParseResult =
   | { ok: true; hooks: string[] | null }
   | { ok: false; error: "invalid_hooks" | "hook_too_long" }

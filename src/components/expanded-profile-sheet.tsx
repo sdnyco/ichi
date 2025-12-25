@@ -1,9 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import * as Dialog from "@radix-ui/react-dialog"
+import { RefreshCw, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-import { Badge } from "@/components/ui/badge"
+import { HooksPicker } from "@/components/profile/hooks-picker"
+import { SaveStatusBar } from "@/components/profile/save-status-bar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,18 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetDescription,
-} from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { generateAlias } from "@/lib/alias"
 import { MAX_HINT_LENGTH, MOOD_OPTIONS } from "@/lib/checkins"
-import { AGE_BANDS, HOOK_SUGGESTIONS, MAX_HOOKS } from "@/lib/profile"
+import { AGE_BANDS, MAX_HOOKS } from "@/lib/profile"
 import { getOrCreateLocalUserId } from "@/lib/identity"
 import { t, type Locale } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
@@ -154,9 +149,7 @@ export function ExpandedProfileSheet({
 
     if (data.activeCheckin) {
       const hooks =
-        data.activeCheckin.hooks ??
-        data.placeProfile?.lastHooks ??
-        []
+        data.activeCheckin.hooks ?? data.placeProfile?.lastHooks ?? []
       setHooksValue(hooks)
       setHasSeededHooks(true)
     } else {
@@ -237,9 +230,6 @@ export function ExpandedProfileSheet({
   const hasContext = Boolean(context)
   const serverAgeBand = context?.userTraits?.ageBand ?? null
   const serverHeight = context?.userTraits?.heightCm ?? null
-
-  const hooksRemaining = MAX_HOOKS - hooksValue.length
-  const hooksLimitReached = hooksRemaining <= 0
 
   const heightNumber =
     heightValue.trim() === "" ? null : Number.parseInt(heightValue, 10)
@@ -444,7 +434,7 @@ export function ExpandedProfileSheet({
     if (!userId) return
     if (!hasSeededHooks) return
     const serverHooks = activeCheckin.hooks ?? []
-    if (areArraysEqual(hooksValue, serverHooks)) return
+    if (JSON.stringify(serverHooks) === JSON.stringify(hooksValue)) return
     const hookSignature = JSON.stringify(hooksValue)
     if (hookSignature === lastHooksSubmitted.current) return
 
@@ -488,90 +478,42 @@ export function ExpandedProfileSheet({
     return () => window.clearTimeout(handle)
   }, [activeCheckin, hasSeededHooks, hooksValue, placeId, sendPatch, userId])
 
-  function handleHookSuggestion(value: string) {
-    setHooksValue((prev) =>
-      prev.includes(value)
-        ? prev.filter((item) => item !== value)
-        : prev.length >= MAX_HOOKS
-          ? prev
-          : [...prev, value],
-    )
-  }
-
-  function handleRemoveHook(value: string) {
-    setHooksValue((prev) => prev.filter((item) => item !== value))
-  }
-
-  const hookHelper = `${hooksRemaining} ${t(
-    locale,
-    "profile.hooks.remaining",
-  )}`
-
   const heightHelper = isHeightValid
     ? t(locale, "profile.height.helper")
     : t(locale, "profile.height.error")
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
+    <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog.Trigger asChild>
         <Button variant="outline" size="lg" className="w-full justify-center">
           {t(locale, "profile.trigger")}
         </Button>
-      </SheetTrigger>
-      <SheetContent
-        side="right"
-        className="flex h-full flex-col gap-6 sm:max-w-lg"
-      >
-        <SheetHeader className="flex flex-col gap-2 text-left">
-          <SheetTitle>{t(locale, "profile.sheet.title")}</SheetTitle>
-          <SheetDescription className="flex items-center justify-between gap-2">
-            <span>{t(locale, "profile.sheet.subtitle", { place: placeName })}</span>
-            <Badge
-              variant={
-                saveBadge === "error"
-                  ? "destructive"
-                  : saveBadge === "saving"
-                    ? "warning"
-                    : saveBadge === "saved"
-                      ? "success"
-                      : "secondary"
-              }
-            >
-              {badgeLabel}
-            </Badge>
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="flex-1 space-y-10 overflow-y-auto pr-2">
-          {isLoading ? (
-            <div className="rounded-2xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
-              {t(locale, "profile.loading")}
-            </div>
-          ) : loadError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {t(locale, "profile.loadError")}
-            </div>
-          ) : (
-            <>
-              <section className="space-y-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-zinc-500">
-                    {t(locale, "profile.placeSection")}
-                  </p>
-                  <h3 className="text-lg font-semibold text-zinc-900">
-                    {t(locale, "profile.alias.label")}
-                  </h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-zinc-900 bg-zinc-900 px-5 py-4 text-center text-white shadow-sm">
-                    <p className="text-xl font-semibold">
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" />
+        <Dialog.Content className="fixed inset-0 z-50 overflow-hidden focus:outline-none">
+          <div className="flex h-full flex-col bg-zinc-950 text-zinc-50">
+            <SaveStatusBar status={saveBadge} label={badgeLabel} />
+            <div className="flex-1 overflow-y-auto">
+              <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-6 py-10">
+                <Dialog.Title className="sr-only">
+                  {t(locale, "profile.sheet.title")}
+                </Dialog.Title>
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-zinc-400">
+                      {t(locale, "profile.placeSection")}
+                    </p>
+                    <h1 className="text-3xl font-semibold text-white">
                       {aliasValue || t(locale, "profile.alias.placeholder")}
+                    </h1>
+                    <p className="mt-2 text-sm text-zinc-400">
+                      {t(locale, "profile.overlay.subtitle", {
+                        place: placeName,
+                      })}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-zinc-500">
-                      {t(locale, "profile.alias.helper")}
-                    </p>
+                  <div className="flex items-center gap-3">
                     <Button
                       type="button"
                       variant="ghost"
@@ -580,227 +522,196 @@ export function ExpandedProfileSheet({
                         !hasPlaceProfile || !userId || isAliasUpdating
                       }
                       onClick={handleRegenerateAlias}
+                      className="inline-flex items-center gap-2 text-white"
                     >
+                      <RefreshCw className="h-4 w-4" />
                       {t(locale, "profile.alias.regenerate")}
                     </Button>
+                    <Dialog.Close asChild>
+                      <button
+                        type="button"
+                        className="rounded-full border border-white/20 p-2 text-white transition hover:border-white/60"
+                        aria-label={t(locale, "profile.overlay.close")}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </Dialog.Close>
                   </div>
                 </div>
-              </section>
 
-              <section className="space-y-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-zinc-500">
-                    {t(locale, "profile.activeSection")}
-                  </p>
-                  <h3 className="text-lg font-semibold text-zinc-900">
-                    {t(locale, "profile.active.title")}
-                  </h3>
-                  {!hasActiveCheckin ? (
-                    <p className="mt-1 text-sm text-zinc-500">
-                      {t(locale, "profile.noActive")}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-800">
-                      {t(locale, "profile.mood.label")}
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {MOOD_OPTIONS.map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          disabled={!hasActiveCheckin}
-                          onClick={() => setMoodValue(option.id)}
-                          className={cn(
-                            "rounded-xl border px-4 py-3 text-left text-sm font-medium transition",
-                            moodValue === option.id
-                              ? "border-zinc-900 bg-zinc-900 text-white"
-                              : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300",
-                            !hasActiveCheckin &&
-                              "cursor-not-allowed opacity-60",
-                          )}
-                        >
-                          {t(locale, option.labelKey)}
-                        </button>
-                      ))}
-                    </div>
+                {isLoading ? (
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center text-sm text-zinc-200">
+                    {t(locale, "profile.loading")}
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-800">
-                      {t(locale, "profile.recognizability.label")}
-                    </label>
-                    <Textarea
-                      value={hintValue}
-                      maxLength={MAX_HINT_LENGTH}
-                      disabled={!hasActiveCheckin}
-                      onChange={(event) => setHintValue(event.target.value)}
-                      placeholder={t(locale, "profile.recognizability.placeholder")}
-                    />
-                    <p className="text-xs text-zinc-500">
-                      {MAX_HINT_LENGTH - hintValue.length}{" "}
-                      {t(locale, "profile.charactersLeft")}
-                    </p>
+                ) : loadError ? (
+                  <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-100">
+                    {t(locale, "profile.loadError")}
                   </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-3">
+                ) : (
+                  <>
+                    <section className="space-y-4">
                       <div>
-                        <p className="text-sm font-medium text-zinc-800">
-                          {t(locale, "profile.hooks.label")}
+                        <p className="text-xs uppercase tracking-wide text-zinc-400">
+                          {t(locale, "profile.activeSection")}
                         </p>
-                        <p className="text-xs text-zinc-500">
-                          {t(locale, "profile.hooks.helper")}
-                        </p>
+                        <h2 className="text-2xl font-semibold text-white">
+                          {t(locale, "profile.active.title")}
+                        </h2>
+                        {!hasActiveCheckin ? (
+                          <p className="mt-1 text-sm text-zinc-400">
+                            {t(locale, "profile.noActive")}
+                          </p>
+                        ) : null}
                       </div>
-                      {!hasActiveCheckin ? (
-                        <Badge variant="secondary">
-                          {t(locale, "profile.hooks.disabled")}
-                        </Badge>
-                      ) : null}
-                    </div>
 
-                    {hooksValue.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {hooksValue.map((hook) => (
-                          <span
-                            key={hook}
-                            className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700"
-                          >
-                            {hook}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveHook(hook)}
-                              disabled={!hasActiveCheckin}
-                              className="text-zinc-500 transition hover:text-zinc-900 disabled:pointer-events-none"
-                            >
-                              ×
-                            </button>
+                      <div className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium uppercase tracking-wide text-zinc-400">
+                            {t(locale, "profile.mood.label")}
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {MOOD_OPTIONS.map((option) => (
+                              <button
+                                key={option.id}
+                                type="button"
+                                disabled={!hasActiveCheckin}
+                                onClick={() => setMoodValue(option.id)}
+                                className={cn(
+                                  "rounded-2xl border px-4 py-3 text-left text-sm font-medium transition",
+                                  moodValue === option.id
+                                    ? "border-white bg-white text-zinc-900"
+                                    : "border-white/20 text-white hover:border-white/60",
+                                  !hasActiveCheckin &&
+                                    "cursor-not-allowed opacity-40",
+                                )}
+                              >
+                                {t(locale, option.labelKey)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium uppercase tracking-wide text-zinc-400">
+                            {t(locale, "profile.recognizability.label")}
+                          </label>
+                          <Textarea
+                            value={hintValue}
+                            maxLength={MAX_HINT_LENGTH}
+                            disabled={!hasActiveCheckin}
+                            onChange={(event) => setHintValue(event.target.value)}
+                            placeholder={t(locale, "profile.recognizability.placeholder")}
+                            className="min-h-[120px] border-white/20 bg-transparent text-base text-white placeholder:text-white/40"
+                          />
+                          <p className="text-xs text-zinc-400">
+                            {t(locale, "profile.charactersLeft", {
+                              count: String(MAX_HINT_LENGTH - hintValue.length),
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-zinc-400">
+                            {t(locale, "profile.hooks.label")}
+                          </p>
+                          <h2 className="text-2xl font-semibold text-white">
+                            {t(locale, "profile.hooks.helper")}
+                          </h2>
+                        </div>
+                        {!hasActiveCheckin ? (
+                          <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
+                            {t(locale, "profile.hooks.disabled")}
                           </span>
-                        ))}
+                        ) : null}
                       </div>
-                    ) : (
-                      <p className="text-sm text-zinc-500">
-                        {t(locale, "profile.hooks.empty")}
-                      </p>
-                    )}
-                    <p className="text-xs text-zinc-500">{hookHelper}</p>
+                      <HooksPicker
+                        locale={locale}
+                        selected={hooksValue}
+                        max={MAX_HOOKS}
+                        disabled={!hasActiveCheckin}
+                        onChange={setHooksValue}
+                      />
+                    </section>
 
-                    <div className="space-y-2">
-                      <p className="text-xs uppercase tracking-wide text-zinc-500">
-                        {t(locale, "profile.hooks.suggestions")}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {HOOK_SUGGESTIONS.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            disabled={
-                              !hasActiveCheckin ||
-                              (hooksLimitReached &&
-                                !hooksValue.includes(suggestion))
+                    <section className="space-y-6">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-zinc-400">
+                          {t(locale, "profile.globalSection")}
+                        </p>
+                        <h2 className="text-2xl font-semibold text-white">
+                          {t(locale, "profile.global.title")}
+                        </h2>
+                      </div>
+
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-4">
+                          <label className="text-sm font-medium uppercase tracking-wide text-zinc-400">
+                            {t(locale, "profile.age.label")}
+                          </label>
+                          <Select
+                            value={ageBandValue ?? CLEAR_AGE_VALUE}
+                            onValueChange={(value) =>
+                              setAgeBandValue(
+                                value === CLEAR_AGE_VALUE ? null : value,
+                              )
                             }
-                            onClick={() => handleHookSuggestion(suggestion)}
+                          >
+                            <SelectTrigger className="h-12 border-white/30 bg-transparent text-white">
+                              <SelectValue
+                                placeholder={t(locale, "profile.age.placeholder")}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={CLEAR_AGE_VALUE}>
+                                {t(locale, "profile.age.unset")}
+                              </SelectItem>
+                              {AGE_BANDS.map((band) => (
+                                <SelectItem key={band} value={band}>
+                                  {band}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-4">
+                          <label className="text-sm font-medium uppercase tracking-wide text-zinc-400">
+                            {t(locale, "profile.height.label")}
+                          </label>
+                          <Input
+                            value={heightValue}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            onChange={(event) => {
+                              const value = event.target.value.replace(/[^0-9]/g, "")
+                              setHeightValue(value)
+                            }}
+                            placeholder="—"
+                            className="h-12 border-white/30 bg-transparent text-white placeholder:text-white/40"
+                          />
+                          <p
                             className={cn(
-                              "rounded-full border px-3 py-1 text-xs font-medium transition",
-                              hooksValue.includes(suggestion)
-                                ? "border-zinc-900 bg-zinc-900 text-white"
-                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
-                              !hasActiveCheckin &&
-                                "cursor-not-allowed opacity-50",
+                              "text-xs",
+                              isHeightValid ? "text-zinc-400" : "text-red-300",
                             )}
                           >
-                            {suggestion}
-                          </button>
-                        ))}
+                            {heightHelper}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-zinc-500">
-                    {t(locale, "profile.globalSection")}
-                  </p>
-                  <h3 className="text-lg font-semibold text-zinc-900">
-                    {t(locale, "profile.global.title")}
-                  </h3>
-                </div>
-
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-800">
-                      {t(locale, "profile.age.label")}
-                    </label>
-                    <Select
-                      value={ageBandValue ?? CLEAR_AGE_VALUE}
-                      onValueChange={(value) =>
-                        setAgeBandValue(
-                          value === CLEAR_AGE_VALUE ? null : value,
-                        )
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={t(locale, "profile.age.placeholder")}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={CLEAR_AGE_VALUE}>
-                          {t(locale, "profile.age.unset")}
-                        </SelectItem>
-                        {AGE_BANDS.map((band) => (
-                          <SelectItem key={band} value={band}>
-                            {band}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-800">
-                      {t(locale, "profile.height.label")}
-                    </label>
-                    <Input
-                      value={heightValue}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      onChange={(event) => {
-                        const value = event.target.value.replace(/[^0-9]/g, "")
-                        setHeightValue(value)
-                      }}
-                      placeholder="—"
-                    />
-                    <p
-                      className={cn(
-                        "text-xs",
-                        isHeightValid ? "text-zinc-500" : "text-red-600",
-                      )}
-                    >
-                      {heightHelper}
-                    </p>
-                  </div>
-                </div>
-              </section>
-            </>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+                    </section>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
-}
-
-function areArraysEqual(a: string[], b: string[] | null) {
-  if (!b) {
-    return a.length === 0
-  }
-  if (a.length !== b.length) return false
-  return a.every((value, index) => value === b[index])
 }
 
