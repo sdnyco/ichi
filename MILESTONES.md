@@ -375,3 +375,125 @@ These items are **explicitly out of MVP scope**, but should be revisited and con
 * Messaging
 
 ---
+
+## Pre-Launch Security Audit (Required Before Public Deployment)
+
+> Goal: ensure basic safety, access control, and data integrity before exposing ichi to real-world usage.
+> Scope: internal audit only; no external pentest assumed.
+
+---
+
+### 1. Admin Access & Privilege Boundaries
+
+- [ ] All `/admin/*` routes are protected by server-side middleware  
+- [ ] No admin pages render without a valid admin session cookie
+- [ ] Admin authentication uses:
+  - [ ] `ADMIN_TOKEN` from env
+  - [ ] httpOnly cookie (no token in URL, no token in localStorage)
+- [ ] Admin cookie is:
+  - [ ] httpOnly
+  - [ ] `secure` in production
+  - [ ] reasonable `sameSite` setting
+- [ ] Admin logout fully clears admin session cookie
+- [ ] No admin data is accessible via unauthenticated API routes
+- [ ] No server actions mutate admin-only state without admin auth checks
+
+---
+
+### 2. Privilege Escalation Checks
+
+Verify that **non-admin users cannot**:
+
+- [ ] Ban or unban users
+- [ ] Modify `users.isBanned`, `bannedAt`, or `banReason`
+- [ ] Change `user_reports.status`
+- [ ] Enable or disable portals
+- [ ] End or modify other users’ check-ins
+- [ ] Access admin-only queries via client-side calls
+
+> UI guards are not sufficient — server-side enforcement must exist.
+
+---
+
+### 3. Banned User Enforcement
+
+- [ ] Banned users cannot create new check-ins
+- [ ] Banned users cannot update existing check-ins
+- [ ] Banned users cannot update place profiles or anchors
+- [ ] Banned users do not appear in:
+  - [ ] place galleries
+  - [ ] active check-in lists
+- [ ] Banned users receive a sane UX state (e.g. “Account disabled”), not a crash or silent failure
+
+---
+
+### 4. Blocking & Visibility Guarantees
+
+- [ ] User blocks are enforced **symmetrically** (A blocks B ⇒ neither sees the other)
+- [ ] Blocked users never appear in:
+  - [ ] place galleries
+  - [ ] expanded profile overlays
+- [ ] Blocking applies across all places (not place-scoped)
+- [ ] Blocking persists across:
+  - [ ] later check-ins
+  - [ ] page reloads
+- [ ] Reporting does not implicitly block (and vice versa)
+
+---
+
+### 5. Portal Safety
+
+- [ ] Disabled portals (`portals.isEnabled = false`) cannot resolve to places
+- [ ] Portal routes fail gracefully when disabled (inactive screen, not error dump)
+- [ ] No place data is leaked via disabled portal routes
+- [ ] Admin can re-enable portals cleanly without side effects
+
+---
+
+### 6. Data Exposure & Leakage
+
+- [ ] Admin-only queries are not reused in public pages
+- [ ] Server-side props do not serialize admin-only fields
+- [ ] No sensitive fields are sent to the client unnecessarily
+- [ ] Report free-text is only visible in admin views
+
+---
+
+### 7. Identity & Session Assumptions
+
+- [ ] Anonymous / pre-check-in users can block and report safely
+- [ ] Clearing cookies creates a new identity (accepted behavior)
+- [ ] `users.lastSeenAt` updates correctly on:
+  - [ ] place visits
+  - [ ] check-in create/update
+  - [ ] block/unblock
+  - [ ] report
+- [ ] Identity behavior is documented as “anonymous by default” for MVP
+
+---
+
+### 8. Operational Safety (Nice-to-Have but Recommended)
+
+- [ ] Admin actions are reversible (unban, re-enable portal)
+- [ ] Check-ins can be force-ended via admin UI
+- [ ] No destructive admin actions without explicit intent (no silent deletes)
+
+---
+
+### 9. Manual Smoke Tests (Do These)
+
+- [ ] Visit `/admin` without token → access denied
+- [ ] Log in as admin → all admin sections accessible
+- [ ] Log out → admin access fully revoked
+- [ ] Ban a user → verify read + write enforcement
+- [ ] Disable a portal → verify inactive portal UX
+- [ ] Block a user → verify mutual invisibility immediately
+- [ ] Report a user → verify persistence + admin visibility
+
+---
+
+### Audit Result
+
+- [ ] All checks passed  
+- [ ] Known issues documented (blocking launch / non-blocking)  
+- [ ] Ready for limited public deployment
