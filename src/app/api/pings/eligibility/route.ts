@@ -10,6 +10,18 @@ import {
 import { arePingRateLimitsDisabled } from "@/lib/dev-overrides"
 import { getPingDayKey } from "@/lib/pings"
 
+const shouldLogDebug = process.env.NODE_ENV !== "production"
+
+function logEligibilityDebug(message: string, payload?: Record<string, unknown>) {
+  if (!shouldLogDebug) return
+  const base = `[ping-eligibility] ${message}`
+  if (payload) {
+    console.log(base, payload)
+  } else {
+    console.log(base)
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
@@ -28,6 +40,12 @@ export async function GET(request: Request) {
 
     const now = new Date()
     const disableRateLimits = arePingRateLimitsDisabled()
+    logEligibilityDebug("incoming request", {
+      placeId,
+      checkInId,
+      senderUserId,
+      disableRateLimits,
+    })
     const checkIn = await db.query.checkIns.findFirst({
       where: (tbl, operators) =>
         operators.and(
@@ -52,6 +70,9 @@ export async function GET(request: Request) {
       excludeCheckInId: checkInId,
     })
     const isPlaceEmpty = activeCount === 0
+    if (!isPlaceEmpty) {
+      logEligibilityDebug("place not empty", { activeCount })
+    }
     const dayKey = getPingDayKey(now, { disableRateLimits })
     const sendLimitAvailable = disableRateLimits
       ? true
@@ -59,6 +80,9 @@ export async function GET(request: Request) {
           placeId,
           dayKey,
         }))
+    if (!sendLimitAvailable) {
+      logEligibilityDebug("send limit already used", { dayKey })
+    }
 
     let eligibleCount = 0
     if (isPlaceEmpty && sendLimitAvailable) {
@@ -69,6 +93,12 @@ export async function GET(request: Request) {
         disableRateLimits,
       })
       eligibleCount = recipients.length
+      logEligibilityDebug("computed recipients", { eligibleCount })
+    } else {
+      logEligibilityDebug("skipped eligibility compute", {
+        isPlaceEmpty,
+        sendLimitAvailable,
+      })
     }
 
     return NextResponse.json({
@@ -81,6 +111,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error(error)
+    logEligibilityDebug("error", { error: (error as Error)?.message })
     return NextResponse.json({ error: "unknown_error" }, { status: 500 })
   }
 }

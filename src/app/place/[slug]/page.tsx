@@ -1,8 +1,9 @@
 import { cookies, headers } from "next/headers"
 import { notFound } from "next/navigation"
 
-import { CheckInFlow } from "@/components/check-in-flow"
 import { ExpandedProfileSheet } from "@/components/expanded-profile-sheet"
+import { CheckInFlow } from "@/components/check-in-flow"
+import { PlaceCheckInDrawer } from "@/components/place-check-in-drawer"
 import { PlaceGallery } from "@/components/place-gallery"
 import { getActiveGalleryForPlace, getPlaceBySlug } from "@/db/queries/places"
 import { touchUserLastSeen } from "@/db/queries/users"
@@ -63,7 +64,7 @@ export default async function PlacePage({
   )
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-10 px-6 py-12">
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-10 px-6 pb-32 pt-12">
       <header className="space-y-2">
         <p className="text-sm uppercase tracking-wide text-zinc-500">
           {t(locale, "place.header.label")}
@@ -103,6 +104,7 @@ export default async function PlacePage({
           initialViewerUserId={viewerUserId}
         />
       </section>
+      <PlaceCheckInDrawer placeId={place.id} locale={locale} />
     </div>
   )
 }

@@ -22,6 +22,18 @@ import {
   sendPingEmails,
 } from "@/lib/pings"
 
+const shouldLogDebug = process.env.NODE_ENV !== "production"
+
+function logPingAction(message: string, payload?: Record<string, unknown>) {
+  if (!shouldLogDebug) return
+  const base = `[ping-send] ${message}`
+  if (payload) {
+    console.log(base, payload)
+  } else {
+    console.log(base)
+  }
+}
+
 class NoRecipientsAfterRecheckError extends Error {}
 
 type SendPingRequestBody = {
@@ -48,6 +60,11 @@ export async function POST(request: Request) {
     await ensureUserNotBanned(senderUserId)
 
     const now = new Date()
+    logPingAction("incoming send request", {
+      placeId,
+      senderCheckInId,
+      senderUserId,
+    })
     const disableRateLimits = arePingRateLimitsDisabled()
     const checkIn = await db.query.checkIns.findFirst({
       where: (tbl, operators) =>
@@ -66,6 +83,7 @@ export async function POST(request: Request) {
     })
 
     if (!checkIn) {
+      logPingAction("checkin not found or expired", { senderCheckInId })
       return NextResponse.json({ ok: false, reason: "checkin_not_found" }, { status: 404 })
     }
 
@@ -74,6 +92,7 @@ export async function POST(request: Request) {
     })
 
     if (!place) {
+      logPingAction("place not found", { placeId })
       return NextResponse.json({ ok: false, reason: "place_not_found" }, { status: 404 })
     }
 
@@ -84,6 +103,7 @@ export async function POST(request: Request) {
     })
 
     if (activeCount > 0) {
+      logPingAction("place not empty", { activeCount })
       return NextResponse.json({ ok: false, reason: "not_empty" }, { status: 200 })
     }
 
@@ -91,6 +111,7 @@ export async function POST(request: Request) {
     const sendLimitAvailable =
       disableRateLimits || !(await hasPingEventForDay(db, { placeId, dayKey }))
     if (!sendLimitAvailable) {
+      logPingAction("send limit hit", { placeId, dayKey })
       return NextResponse.json({ ok: false, reason: "send_limit" }, { status: 200 })
     }
 
@@ -104,10 +125,12 @@ export async function POST(request: Request) {
     })
 
     if (txResult.type === "send_limit") {
+      logPingAction("tx result send_limit")
       return NextResponse.json({ ok: false, reason: "send_limit" }, { status: 200 })
     }
 
     if (txResult.type === "no_recipients") {
+      logPingAction("tx result no_recipients")
       return NextResponse.json({ ok: false, reason: "no_recipients" }, { status: 200 })
     }
 
@@ -121,6 +144,7 @@ export async function POST(request: Request) {
           email: recipient.email,
         })),
       })
+      logPingAction("emails sent", { count: txResult.recipients.length })
     } catch (error) {
       console.error("ping_email_failed", error)
       await db
@@ -137,12 +161,14 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     if (error instanceof NoRecipientsAfterRecheckError) {
+      logPingAction("caught NoRecipientsAfterRecheckError")
       return NextResponse.json({ ok: false, reason: "no_recipients" }, { status: 200 })
     }
     if (error instanceof AccountDisabledError) {
       return NextResponse.json({ ok: false, reason: "account_disabled" }, { status: 403 })
     }
     console.error(error)
+    logPingAction("error", { error: (error as Error)?.message })
     return NextResponse.json({ ok: false, reason: "unknown_error" }, { status: 500 })
   }
 }

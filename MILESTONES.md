@@ -297,6 +297,10 @@ Make it operationally deployable across multiple real places.
 
 These items are **explicitly out of MVP scope**, but should be revisited and consciously decided on before launch. None of them block M5 or M6.
 
+### Misc
+
+* [ ] _Confirm_ email before allowing pings (abuse potential)
+
 ### UI / Interaction Refinements
 
 * [ ] Unify alias generation so first-time self-profile preview and first check-in produce the same persisted place-scoped alias (single source of truth per user/place).
