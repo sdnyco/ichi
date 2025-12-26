@@ -11,6 +11,7 @@ import {
   AccountDisabledError,
   ensureUserNotBanned,
 } from "@/db/queries/users"
+import { isValidEmail } from "@/lib/email"
 import { parseHookListInput } from "@/lib/profile"
 
 const MAX_ALIAS_LENGTH = 60
@@ -20,6 +21,10 @@ type PlaceProfilePayload = {
   placeId?: string
   alias?: string
   lastHooks?: unknown
+  isAnchored?: boolean
+  isAvailabilityEnabled?: boolean
+  availabilityWeekly?: unknown
+  contactEmail?: unknown
 }
 
 export async function PATCH(request: Request) {
@@ -37,8 +42,31 @@ export async function PATCH(request: Request) {
 
     const aliasProvided = Object.prototype.hasOwnProperty.call(body, "alias")
     const hooksProvided = Object.prototype.hasOwnProperty.call(body, "lastHooks")
+    const anchoredProvided = Object.prototype.hasOwnProperty.call(
+      body,
+      "isAnchored",
+    )
+    const availabilityEnabledProvided = Object.prototype.hasOwnProperty.call(
+      body,
+      "isAvailabilityEnabled",
+    )
+    const availabilityWeeklyProvided = Object.prototype.hasOwnProperty.call(
+      body,
+      "availabilityWeekly",
+    )
+    const contactEmailProvided = Object.prototype.hasOwnProperty.call(
+      body,
+      "contactEmail",
+    )
 
-    if (!aliasProvided && !hooksProvided) {
+    if (
+      !aliasProvided &&
+      !hooksProvided &&
+      !anchoredProvided &&
+      !availabilityEnabledProvided &&
+      !availabilityWeeklyProvided &&
+      !contactEmailProvided
+    ) {
       return NextResponse.json(
         { error: "no_fields_to_update" },
         { status: 400 },
@@ -70,6 +98,63 @@ export async function PATCH(request: Request) {
       nextHooks = parsed.hooks
     }
 
+    let nextAnchored: boolean | undefined
+    if (anchoredProvided) {
+      if (typeof body.isAnchored !== "boolean") {
+        return NextResponse.json({ error: "invalid_isAnchored" }, { status: 400 })
+      }
+      nextAnchored = body.isAnchored
+    }
+
+    let nextAvailabilityEnabled: boolean | undefined
+    if (availabilityEnabledProvided) {
+      if (typeof body.isAvailabilityEnabled !== "boolean") {
+        return NextResponse.json(
+          { error: "invalid_isAvailabilityEnabled" },
+          { status: 400 },
+        )
+      }
+      nextAvailabilityEnabled = body.isAvailabilityEnabled
+    }
+
+    let nextAvailabilityWeekly: AvailabilityWeekly | null | undefined
+    if (availabilityWeeklyProvided) {
+      const parsed = parseAvailabilityWeeklyInput(body.availabilityWeekly)
+      if (!parsed.ok) {
+        return NextResponse.json(
+          { error: parsed.error ?? "invalid_availability_weekly" },
+          { status: 400 },
+        )
+      }
+      nextAvailabilityWeekly = parsed.schedule
+    }
+
+    let nextContactEmail: string | null | undefined
+    if (contactEmailProvided) {
+      if (
+        body.contactEmail !== null &&
+        body.contactEmail !== undefined &&
+        typeof body.contactEmail !== "string"
+      ) {
+        return NextResponse.json(
+          { error: "invalid_contact_email" },
+          { status: 400 },
+        )
+      }
+      const raw =
+        typeof body.contactEmail === "string" ? body.contactEmail.trim() : ""
+      if (!raw) {
+        nextContactEmail = null
+      } else if (!isValidEmail(raw)) {
+        return NextResponse.json(
+          { error: "invalid_contact_email" },
+          { status: 400 },
+        )
+      } else {
+        nextContactEmail = raw.toLowerCase()
+      }
+    }
+
     await getOrCreateUserId(userId)
     await ensureUserNotBanned(userId)
     await getOrCreatePlaceProfile(userId, placeId)
@@ -84,6 +169,22 @@ export async function PATCH(request: Request) {
 
     if (nextHooks !== undefined) {
       updateData.lastHooks = nextHooks
+    }
+
+    if (nextAnchored !== undefined) {
+      updateData.isAnchored = nextAnchored
+    }
+
+    if (nextAvailabilityEnabled !== undefined) {
+      updateData.isAvailabilityEnabled = nextAvailabilityEnabled
+    }
+
+    if (nextAvailabilityWeekly !== undefined) {
+      updateData.availabilityWeekly = nextAvailabilityWeekly
+    }
+
+    if (nextContactEmail !== undefined) {
+      updateData.contactEmail = nextContactEmail
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -108,6 +209,11 @@ export async function PATCH(request: Request) {
         alias: placeProfiles.alias,
         aliasGenerated: placeProfiles.aliasGenerated,
         lastHooks: placeProfiles.lastHooks,
+        isAnchored: placeProfiles.isAnchored,
+        isAvailabilityEnabled: placeProfiles.isAvailabilityEnabled,
+        availabilityTimeZone: placeProfiles.availabilityTimeZone,
+        availabilityWeekly: placeProfiles.availabilityWeekly,
+        contactEmail: placeProfiles.contactEmail,
       })
 
     return NextResponse.json({
@@ -121,5 +227,60 @@ export async function PATCH(request: Request) {
     console.error(error)
     return NextResponse.json({ error: "unknown_error" }, { status: 500 })
   }
+}
+
+type AvailabilityWeekly = typeof placeProfiles.$inferSelect["availabilityWeekly"]
+
+function parseAvailabilityWeeklyInput(
+  value: unknown,
+): { ok: true; schedule: AvailabilityWeekly } | { ok: false; error: string } {
+  if (value === null) {
+    return { ok: true, schedule: null }
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return { ok: false, error: "invalid_availability_weekly" }
+  }
+
+  const schedule: AvailabilityWeekly = {
+    mon: normalizeWindow((value as Record<string, unknown>).mon),
+    tue: normalizeWindow((value as Record<string, unknown>).tue),
+    wed: normalizeWindow((value as Record<string, unknown>).wed),
+    thu: normalizeWindow((value as Record<string, unknown>).thu),
+    fri: normalizeWindow((value as Record<string, unknown>).fri),
+    sat: normalizeWindow((value as Record<string, unknown>).sat),
+    sun: normalizeWindow((value as Record<string, unknown>).sun),
+  }
+
+  return { ok: true, schedule }
+}
+
+function normalizeWindow(value: unknown) {
+  if (typeof value !== "object" || value === null) {
+    return { start: null, end: null }
+  }
+
+  const rawStart = (value as Record<string, unknown>).start
+  const rawEnd = (value as Record<string, unknown>).end
+  const start = coerceMinute(rawStart)
+  const end = coerceMinute(rawEnd)
+
+  if (start === null || end === null) {
+    return { start: null, end: null }
+  }
+
+  if (start === end) {
+    return { start: null, end: null }
+  }
+
+  return { start, end }
+}
+
+function coerceMinute(value: unknown): number | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== "number") return null
+  if (!Number.isInteger(value)) return null
+  if (value < 0 || value >= 1440) return null
+  return value
 }
 

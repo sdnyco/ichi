@@ -64,6 +64,11 @@ export async function GET(request: Request) {
           alias: profile.alias,
           aliasGenerated: profile.aliasGenerated,
           lastHooks: (profile.lastHooks as string[] | null) ?? null,
+          isAnchored: profile.isAnchored,
+          isAvailabilityEnabled: profile.isAvailabilityEnabled,
+          availabilityTimeZone: profile.availabilityTimeZone,
+          availabilityWeekly: profile.availabilityWeekly,
+          contactEmail: profile.contactEmail,
         }
       : null,
     activeCheckin: activeCheckin

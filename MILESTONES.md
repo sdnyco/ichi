@@ -299,6 +299,8 @@ These items are **explicitly out of MVP scope**, but should be revisited and con
 
 ### UI / Interaction Refinements
 
+* [ ] Unify alias generation so first-time self-profile preview and first check-in produce the same persisted place-scoped alias (single source of truth per user/place).
+
 * [ ] Replace numeric inputs for **Age band** and **Height** with iOS-style wheel pickers
 
   * Reuse existing wheel picker infra if possible

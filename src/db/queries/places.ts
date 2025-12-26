@@ -15,7 +15,7 @@ export type PlaceGalleryEntry = {
   userId: string
   alias: string
   aliasGenerated: boolean
-  anchored: boolean
+  isAnchored: boolean
   startedAt: Date
   expiresAt: Date
 }
@@ -67,7 +67,7 @@ export async function getActiveGalleryForPlace(
       expiresAt: checkIns.expiresAt,
       alias: placeProfiles.alias,
       aliasGenerated: placeProfiles.aliasGenerated,
-      anchored: placeProfiles.anchored,
+      isAnchored: placeProfiles.isAnchored,
     })
     .from(checkIns)
     .innerJoin(

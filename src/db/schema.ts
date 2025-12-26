@@ -2,14 +2,16 @@ import { relations } from "drizzle-orm"
 import {
   boolean,
   index,
-  integer,
   jsonb,
+  integer,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core"
+
+import type { AvailabilityWeekly } from "@/types/availability"
 
 export const places = pgTable(
   "places",
@@ -69,8 +71,18 @@ export const placeProfiles = pgTable(
       .references(() => places.id),
     alias: text("alias").notNull(),
     aliasGenerated: boolean("alias_generated").notNull().default(false),
-    anchored: boolean("anchored").notNull().default(false),
+    isAnchored: boolean("is_anchored").notNull().default(false),
     lastHooks: jsonb("last_hooks").$type<string[] | null>(),
+    isAvailabilityEnabled: boolean("is_availability_enabled")
+      .notNull()
+      .default(false),
+    availabilityTimeZone: text("availability_time_zone")
+      .notNull()
+      .default("Europe/Berlin"),
+    availabilityWeekly: jsonb("availability_weekly").$type<
+      AvailabilityWeekly | null
+    >(),
+    contactEmail: text("contact_email"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -119,6 +131,62 @@ export const checkIns = pgTable(
   }),
 )
 
+export const pingEvents = pgTable(
+  "ping_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    placeId: uuid("place_id")
+      .notNull()
+      .references(() => places.id),
+    senderUserId: uuid("sender_user_id")
+      .notNull()
+      .references(() => users.id),
+    senderCheckInId: uuid("sender_check_in_id")
+      .notNull()
+      .references(() => checkIns.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    dayKey: text("day_key").notNull(),
+    maxRecipients: integer("max_recipients").notNull(),
+    status: text("status").notNull().default("sent"),
+  },
+  (table) => ({
+    placeDayUnique: uniqueIndex("ping_events_place_day_unique").on(
+      table.placeId,
+      table.dayKey,
+    ),
+    placeIdx: index("ping_events_place_idx").on(table.placeId),
+    senderIdx: index("ping_events_sender_idx").on(table.senderUserId),
+  }),
+)
+
+export const pingRecipients = pgTable(
+  "ping_recipients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pingEventId: uuid("ping_event_id")
+      .notNull()
+      .references(() => pingEvents.id),
+    recipientUserId: uuid("recipient_user_id")
+      .notNull()
+      .references(() => users.id),
+    recipientEmail: text("recipient_email").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    uniqueRecipientPerEvent: uniqueIndex(
+      "ping_recipients_event_recipient_unique",
+    ).on(table.pingEventId, table.recipientUserId),
+    recipientIdx: index("ping_recipients_recipient_idx").on(
+      table.recipientUserId,
+      table.createdAt,
+    ),
+  }),
+)
+
 export const userTraits = pgTable("user_traits", {
   userId: uuid("user_id")
     .primaryKey()
@@ -149,6 +217,8 @@ export const portalRelations = relations(portals, ({ one }) => ({
 export const userRelations = relations(users, ({ many, one }) => ({
   profiles: many(placeProfiles),
   checkIns: many(checkIns),
+  pingEvents: many(pingEvents),
+  pingRecipients: many(pingRecipients),
   traits: one(userTraits, {
     fields: [users.id],
     references: [userTraits.userId],
@@ -166,7 +236,7 @@ export const placeProfileRelations = relations(placeProfiles, ({ one }) => ({
   }),
 }))
 
-export const checkInRelations = relations(checkIns, ({ one }) => ({
+export const checkInRelations = relations(checkIns, ({ one, many }) => ({
   place: one(places, {
     fields: [checkIns.placeId],
     references: [places.id],
@@ -175,11 +245,39 @@ export const checkInRelations = relations(checkIns, ({ one }) => ({
     fields: [checkIns.userId],
     references: [users.id],
   }),
+  pingEvents: many(pingEvents),
 }))
 
 export const userTraitRelations = relations(userTraits, ({ one }) => ({
   user: one(users, {
     fields: [userTraits.userId],
+    references: [users.id],
+  }),
+}))
+
+export const pingEventRelations = relations(pingEvents, ({ one, many }) => ({
+  place: one(places, {
+    fields: [pingEvents.placeId],
+    references: [places.id],
+  }),
+  sender: one(users, {
+    fields: [pingEvents.senderUserId],
+    references: [users.id],
+  }),
+  senderCheckIn: one(checkIns, {
+    fields: [pingEvents.senderCheckInId],
+    references: [checkIns.id],
+  }),
+  recipients: many(pingRecipients),
+}))
+
+export const pingRecipientRelations = relations(pingRecipients, ({ one }) => ({
+  event: one(pingEvents, {
+    fields: [pingRecipients.pingEventId],
+    references: [pingEvents.id],
+  }),
+  recipient: one(users, {
+    fields: [pingRecipients.recipientUserId],
     references: [users.id],
   }),
 }))
@@ -246,3 +344,5 @@ export type User = typeof users.$inferSelect
 export type PlaceProfile = typeof placeProfiles.$inferSelect
 export type CheckIn = typeof checkIns.$inferSelect
 export type UserTrait = typeof userTraits.$inferSelect
+export type PingEvent = typeof pingEvents.$inferSelect
+export type PingRecipient = typeof pingRecipients.$inferSelect

@@ -17,6 +17,7 @@ import {
   MAX_HINT_LENGTH,
   MOOD_ID_SET,
 } from "@/lib/checkins"
+import { getCheckinDurationDevOverrideMinutes } from "@/lib/dev-overrides"
 
 type CheckInRequestBody = {
   userId: string
@@ -45,7 +46,9 @@ export async function POST(request: Request) {
     }
 
     const now = new Date()
-    const expiresAt = new Date(now.getTime() + body.durationMinutes * 60_000)
+    const overrideDuration = getCheckinDurationDevOverrideMinutes()
+    const effectiveDurationMinutes = overrideDuration ?? body.durationMinutes // Dev-only testing override; do not enable in production.
+    const expiresAt = new Date(now.getTime() + effectiveDurationMinutes * 60_000)
 
     await getOrCreateUserId(body.userId)
     await ensureUserNotBanned(body.userId)

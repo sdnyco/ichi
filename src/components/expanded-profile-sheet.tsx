@@ -18,6 +18,14 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { generateAlias } from "@/lib/alias"
+import { DEFAULT_AVAILABILITY_TIME_ZONE } from "@/lib/availability"
+import { isValidEmail } from "@/lib/email"
+import {
+  AVAILABILITY_DAY_KEYS,
+  createEmptyAvailabilityWeekly,
+  type AvailabilityDayKey,
+  type AvailabilityWeekly,
+} from "@/types/availability"
 import { MAX_HINT_LENGTH, MOOD_OPTIONS } from "@/lib/checkins"
 import { AGE_BANDS, MAX_HOOKS } from "@/lib/profile"
 import { getOrCreateLocalUserId } from "@/lib/identity"
@@ -37,6 +45,11 @@ type PlaceContextResponse = {
     alias: string
     aliasGenerated: boolean
     lastHooks: string[] | null
+    isAnchored: boolean
+    isAvailabilityEnabled: boolean
+    availabilityTimeZone: string
+    availabilityWeekly: AvailabilityWeekly | null
+    contactEmail: string | null
   } | null
   activeCheckin: ActiveCheckin | null
 }
@@ -56,6 +69,11 @@ type PlaceProfileResponse = {
     alias: string
     aliasGenerated: boolean
     lastHooks: string[] | null
+    isAnchored: boolean
+    isAvailabilityEnabled: boolean
+    availabilityTimeZone: string
+    availabilityWeekly: AvailabilityWeekly | null
+    contactEmail: string | null
   }
 }
 
@@ -88,12 +106,20 @@ export function ExpandedProfileSheet({
   const [accountDisabled, setAccountDisabled] = useState(false)
 
   const [aliasValue, setAliasValue] = useState("")
-  const [moodValue, setMoodValue] = useState(MOOD_OPTIONS[0].id)
+  const [moodValue, setMoodValue] = useState<string>(MOOD_OPTIONS[0].id)
   const [hintValue, setHintValue] = useState("")
   const [hooksValue, setHooksValue] = useState<string[]>([])
+  const [isAnchoredValue, setIsAnchoredValue] = useState(false)
+  const [isAvailabilityEnabledValue, setIsAvailabilityEnabledValue] =
+    useState(false)
+  const [availabilityWeeklyValue, setAvailabilityWeeklyValue] =
+    useState<AvailabilityWeekly>(() => createEmptyAvailabilityWeekly())
+  const [contactEmailValue, setContactEmailValue] = useState("")
   const [ageBandValue, setAgeBandValue] = useState<string | null>(null)
   const [heightValue, setHeightValue] = useState("")
   const [isAliasUpdating, setIsAliasUpdating] = useState(false)
+  const [isAnchoringUpdating, setIsAnchoringUpdating] = useState(false)
+  const [isAvailabilityUpdating, setIsAvailabilityUpdating] = useState(false)
 
   const [hasSeededHooks, setHasSeededHooks] = useState(false)
   const [saveBadge, setSaveBadge] = useState<SaveBadgeState>("idle")
@@ -105,6 +131,8 @@ export function ExpandedProfileSheet({
   const lastMoodSubmitted = useRef<string | null>(null)
   const lastHintSubmitted = useRef<string | null>(null)
   const lastHooksSubmitted = useRef<string | null>(null)
+  const lastContactEmailSubmitted = useRef<string | null>(null)
+  const latestAvailabilityUpdateRef = useRef(0)
 
   const markSaving = useCallback(() => {
     if (savedTimeoutRef.current) {
@@ -146,6 +174,14 @@ export function ExpandedProfileSheet({
     setHeightValue(
       data.userTraits?.heightCm ? String(data.userTraits.heightCm) : "",
     )
+    setIsAnchoredValue(data.placeProfile?.isAnchored ?? false)
+    setIsAvailabilityEnabledValue(
+      data.placeProfile?.isAvailabilityEnabled ?? false,
+    )
+    setAvailabilityWeeklyValue(
+      normalizeAvailabilityWeekly(data.placeProfile?.availabilityWeekly ?? null),
+    )
+    setContactEmailValue(data.placeProfile?.contactEmail ?? "")
     setMoodValue(data.activeCheckin?.mood ?? MOOD_OPTIONS[0].id)
     setHintValue(data.activeCheckin?.recognizabilityHint ?? "")
 
@@ -229,12 +265,64 @@ export function ExpandedProfileSheet({
     [accountDisabled, markError, markSaving, markSuccess, userId],
   )
 
+  const updatePlaceProfileInContext = useCallback(
+    (next?: PlaceProfileResponse["placeProfile"]) => {
+      if (!next) return
+      setContext((prev) =>
+        prev
+          ? {
+              ...prev,
+              placeProfile: prev.placeProfile
+                ? { ...prev.placeProfile, ...next }
+                : next,
+            }
+          : prev,
+      )
+      setAvailabilityWeeklyValue(
+        normalizeAvailabilityWeekly(next.availabilityWeekly ?? null),
+      )
+      if (Object.prototype.hasOwnProperty.call(next, "contactEmail")) {
+        setContactEmailValue(next.contactEmail ?? "")
+      }
+    },
+    [setContext],
+  )
+
   const activeCheckin = context?.activeCheckin ?? null
   const hasActiveCheckin = Boolean(activeCheckin)
   const hasPlaceProfile = Boolean(context?.placeProfile)
-  const hasContext = Boolean(context)
   const serverAgeBand = context?.userTraits?.ageBand ?? null
   const serverHeight = context?.userTraits?.heightCm ?? null
+  const anchoringToggleDisabled =
+    !hasPlaceProfile || !userId || accountDisabled || isAnchoringUpdating
+  const availabilityTimeZone =
+    context?.placeProfile?.availabilityTimeZone ??
+    DEFAULT_AVAILABILITY_TIME_ZONE
+  const availabilityToggleDisabled =
+    !hasPlaceProfile || !userId || accountDisabled || isAvailabilityUpdating
+  const availabilityInputsDisabled =
+    availabilityToggleDisabled || !isAvailabilityEnabledValue
+  const availabilityDayRows = AVAILABILITY_DAY_KEYS.map((dayKey) => {
+    const window = availabilityWeeklyValue[dayKey]
+    const error = isAvailabilityEnabledValue
+      ? getWeeklyDayError(window)
+      : null
+    return {
+      dayKey,
+      label: t(locale, `profile.availability.day.${dayKey}`),
+      startValue: minutesToTimeInput(window.start),
+      endValue: minutesToTimeInput(window.end),
+      error,
+    }
+  })
+  const contactEmailTrimmed = contactEmailValue.trim()
+  const hasContactEmail = contactEmailTrimmed !== ""
+  const isContactEmailFormatValid =
+    !hasContactEmail || isValidEmail(contactEmailTrimmed)
+  const contactEmailInputDisabled =
+    !hasPlaceProfile || !userId || accountDisabled
+  const showContactEmailWarning =
+    isAnchoredValue && (!hasContactEmail || !isContactEmailFormatValid)
 
   const heightNumber =
     heightValue.trim() === "" ? null : Number.parseInt(heightValue, 10)
@@ -251,7 +339,7 @@ export function ExpandedProfileSheet({
     error: t(locale, "profile.status.error"),
   }[saveBadge]
 
-  const checkInMeta = hasActiveCheckin
+  const checkInMeta = activeCheckin
     ? buildCheckInMeta(activeCheckin, placeName)
     : null
 
@@ -267,26 +355,162 @@ export function ExpandedProfileSheet({
     })
       .then((response) => {
         if (response?.placeProfile) {
-          setContext((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  placeProfile: {
-                    ...response.placeProfile,
-                  },
-                }
-              : prev,
-          )
+          updatePlaceProfileInContext(response.placeProfile)
           router.refresh()
         }
       })
       .catch(() => {})
       .finally(() => setIsAliasUpdating(false))
-  }, [hasPlaceProfile, placeId, router, sendPatch, userId])
+  }, [
+    hasPlaceProfile,
+    placeId,
+    router,
+    sendPatch,
+    updatePlaceProfileInContext,
+    userId,
+  ])
+
+  const handleToggleAnchoring = useCallback(() => {
+    if (!hasPlaceProfile || !userId || accountDisabled) return
+    const previousValue = isAnchoredValue
+    const nextValue = !previousValue
+    setIsAnchoredValue(nextValue)
+    setIsAnchoringUpdating(true)
+    void sendPatch<PlaceProfileResponse>("/api/me/place-profile", {
+      userId,
+      placeId,
+      isAnchored: nextValue,
+    })
+      .then((response) => {
+        if (!response?.placeProfile) return
+        updatePlaceProfileInContext(response.placeProfile)
+      })
+      .catch(() => {
+        setIsAnchoredValue(previousValue)
+      })
+      .finally(() => setIsAnchoringUpdating(false))
+  }, [
+    accountDisabled,
+    hasPlaceProfile,
+    isAnchoredValue,
+    placeId,
+    sendPatch,
+    updatePlaceProfileInContext,
+    userId,
+  ])
+
+  const handleToggleAvailability = useCallback(() => {
+    if (!hasPlaceProfile || !userId || accountDisabled) return
+    const previousValue = isAvailabilityEnabledValue
+    const nextValue = !previousValue
+    setIsAvailabilityEnabledValue(nextValue)
+    setIsAvailabilityUpdating(true)
+    void sendPatch<PlaceProfileResponse>("/api/me/place-profile", {
+      userId,
+      placeId,
+      isAvailabilityEnabled: nextValue,
+    })
+      .then((response) => {
+        if (!response?.placeProfile) return
+        updatePlaceProfileInContext(response.placeProfile)
+      })
+      .catch(() => {
+        setIsAvailabilityEnabledValue(previousValue)
+      })
+      .finally(() => setIsAvailabilityUpdating(false))
+  }, [
+    accountDisabled,
+    hasPlaceProfile,
+    isAvailabilityEnabledValue,
+    placeId,
+    sendPatch,
+    updatePlaceProfileInContext,
+    userId,
+  ])
+
+  const persistAvailabilityWeekly = useCallback(
+    (
+      nextSchedule: AvailabilityWeekly,
+      previousSchedule: AvailabilityWeekly,
+    ) => {
+      const requestId = latestAvailabilityUpdateRef.current + 1
+      latestAvailabilityUpdateRef.current = requestId
+      setIsAvailabilityUpdating(true)
+      void sendPatch<PlaceProfileResponse>("/api/me/place-profile", {
+        userId,
+        placeId,
+        availabilityWeekly: nextSchedule,
+      })
+        .then((response) => {
+          if (latestAvailabilityUpdateRef.current !== requestId) return
+          if (!response?.placeProfile) return
+          updatePlaceProfileInContext(response.placeProfile)
+          setAvailabilityWeeklyValue(
+            normalizeAvailabilityWeekly(
+              response.placeProfile.availabilityWeekly ?? null,
+            ),
+          )
+        })
+        .catch(() => {
+          if (latestAvailabilityUpdateRef.current !== requestId) return
+          setAvailabilityWeeklyValue(previousSchedule)
+        })
+        .finally(() => {
+          if (latestAvailabilityUpdateRef.current === requestId) {
+            setIsAvailabilityUpdating(false)
+          }
+        })
+    },
+    [placeId, sendPatch, updatePlaceProfileInContext, userId],
+  )
+
+  const handleAvailabilityTimeChange = useCallback(
+    (dayKey: AvailabilityDayKey, field: "start" | "end", value: string) => {
+      if (!hasPlaceProfile || !userId || accountDisabled) return
+      const isClearing = value === ""
+      const minutes = isClearing ? null : timeInputToMinutes(value)
+      const previousSchedule = cloneAvailabilityWeekly(availabilityWeeklyValue)
+      const nextSchedule: AvailabilityWeekly = {
+        ...availabilityWeeklyValue,
+        [dayKey]: {
+          ...availabilityWeeklyValue[dayKey],
+          [field]: minutes,
+        },
+      }
+      if (isClearing) {
+        nextSchedule[dayKey] = { start: null, end: null }
+        setAvailabilityWeeklyValue(nextSchedule)
+        persistAvailabilityWeekly(nextSchedule, previousSchedule)
+        return
+      }
+
+      if (minutes === null) {
+        setAvailabilityWeeklyValue(previousSchedule)
+        return
+      }
+
+      setAvailabilityWeeklyValue(nextSchedule)
+
+      const { start, end } = nextSchedule[dayKey]
+      const dayComplete =
+        start !== null && end !== null && start !== end
+      const dayCleared = start === null && end === null
+
+      if (dayComplete || dayCleared) {
+        persistAvailabilityWeekly(nextSchedule, previousSchedule)
+      }
+    },
+    [
+      accountDisabled,
+      availabilityWeeklyValue,
+      hasPlaceProfile,
+      persistAvailabilityWeekly,
+      userId,
+    ],
+  )
 
   useEffect(() => {
-    if (!hasContext) return
-    if (!userId) return
+    if (!context || !userId) return
     if (!context.userTraits && ageBandValue === null && heightValue === "")
       return
 
@@ -339,17 +563,17 @@ export function ExpandedProfileSheet({
           if (nextHeightSubmission !== undefined) {
             lastHeightSubmitted.current = null
           }
-          setContext((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  userTraits: {
-                    ageBand: ageBandValue ?? null,
-                    heightCm: pendingHeight,
-                  },
-                }
-              : prev,
-          )
+        setContext((prev) =>
+          prev
+            ? {
+                ...prev,
+                userTraits: {
+                  ageBand: ageBandValue ?? null,
+                  heightCm: pendingHeight,
+                },
+              }
+            : prev,
+        )
         })
         .catch(() => {})
     }, AUTOSAVE_DELAY)
@@ -360,8 +584,7 @@ export function ExpandedProfileSheet({
     heightNumber,
     heightValue,
     isHeightValid,
-    context?.userTraits,
-    hasContext,
+    context,
     sendPatch,
     serverAgeBand,
     serverHeight,
@@ -487,6 +710,48 @@ export function ExpandedProfileSheet({
     return () => window.clearTimeout(handle)
   }, [activeCheckin, hasSeededHooks, hooksValue, placeId, sendPatch, userId])
 
+  useEffect(() => {
+    if (!hasPlaceProfile) return
+    if (!userId) return
+    if (accountDisabled) return
+    if (!isAnchoredValue) return
+    const serverEmail = context?.placeProfile?.contactEmail ?? ""
+    const trimmed = contactEmailValue.trim()
+    if (trimmed === serverEmail) return
+    if (trimmed === lastContactEmailSubmitted.current) return
+    if (trimmed && !isValidEmail(trimmed)) return
+
+    const handle = window.setTimeout(() => {
+      lastContactEmailSubmitted.current = trimmed
+      void sendPatch<PlaceProfileResponse>("/api/me/place-profile", {
+        userId,
+        placeId,
+        contactEmail: trimmed || null,
+      })
+        .then((response) => {
+          lastContactEmailSubmitted.current = null
+          if (response?.placeProfile) {
+            updatePlaceProfileInContext(response.placeProfile)
+          }
+        })
+        .catch(() => {
+          lastContactEmailSubmitted.current = null
+        })
+    }, AUTOSAVE_DELAY)
+
+    return () => window.clearTimeout(handle)
+  }, [
+    accountDisabled,
+    contactEmailValue,
+    context?.placeProfile?.contactEmail,
+    hasPlaceProfile,
+    isAnchoredValue,
+    placeId,
+    sendPatch,
+    updatePlaceProfileInContext,
+    userId,
+  ])
+
   const heightHelper = isHeightValid
     ? t(locale, "profile.height.helper")
     : t(locale, "profile.height.error")
@@ -540,6 +805,80 @@ export function ExpandedProfileSheet({
                       {t(locale, "profile.alias.regenerate")}
                     </Button>
                   </div>
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-zinc-400">
+                          {t(locale, "profile.anchor.label")}
+                        </p>
+                        <p className="text-sm text-zinc-300">
+                          {t(locale, "profile.anchor.helper")}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isAnchoredValue}
+                        disabled={anchoringToggleDisabled}
+                        onClick={handleToggleAnchoring}
+                        className={cn(
+                          "flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
+                          isAnchoredValue
+                            ? "border-white bg-white text-zinc-900"
+                            : "border-white/30 text-white hover:border-white/60",
+                          anchoringToggleDisabled && "cursor-not-allowed opacity-50",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "inline-flex h-6 w-11 items-center rounded-full bg-white/20 transition",
+                            isAnchoredValue
+                              ? "justify-end bg-zinc-900"
+                              : "justify-start",
+                          )}
+                        >
+                          <span className="m-1 h-4 w-4 rounded-full bg-white" />
+                        </span>
+                        <span>
+                          {isAnchoredValue
+                            ? t(locale, "profile.anchor.on")
+                            : t(locale, "profile.anchor.off")}
+                        </span>
+                      </button>
+                    </div>
+                    {isAnchoredValue ? (
+                      <div className="mt-4 space-y-2">
+                        <label className="text-xs uppercase tracking-wide text-zinc-400">
+                          {t(locale, "profile.anchor.emailLabel")}
+                        </label>
+                        <Input
+                          value={contactEmailValue}
+                          onChange={(event) => setContactEmailValue(event.target.value)}
+                          placeholder={t(locale, "profile.anchor.emailPlaceholder")}
+                          disabled={contactEmailInputDisabled}
+                          inputMode="email"
+                          className="h-12 border-white/30 bg-transparent text-white placeholder:text-white/40"
+                        />
+                        <p
+                          className={cn(
+                            "text-xs",
+                            isContactEmailFormatValid
+                              ? "text-zinc-400"
+                              : "text-red-300",
+                          )}
+                        >
+                          {isContactEmailFormatValid
+                            ? t(locale, "profile.anchor.emailHelper")
+                            : t(locale, "profile.anchor.emailInvalid")}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                  {showContactEmailWarning ? (
+                    <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      {t(locale, "profile.anchor.emailWarning")}
+                    </p>
+                  ) : null}
                   {checkInMeta ? (
                     <div className="space-y-3 rounded-3xl border border-dashed border-white/20 bg-white/5 p-5">
                       <p className="text-sm text-zinc-100">
@@ -722,6 +1061,136 @@ export function ExpandedProfileSheet({
                         </div>
                       </div>
                     </section>
+
+                    <div className="border-t border-dashed border-white/15" />
+
+                    <section>
+                      <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-zinc-400">
+                              {t(locale, "profile.availability.label")}
+                            </p>
+                            <p className="text-sm text-zinc-300">
+                              {t(locale, "profile.availability.helper")}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={isAvailabilityEnabledValue}
+                            disabled={availabilityToggleDisabled}
+                            onClick={handleToggleAvailability}
+                            className={cn(
+                              "flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
+                              isAvailabilityEnabledValue
+                                ? "border-white bg-white text-zinc-900"
+                                : "border-white/30 text-white hover:border-white/60",
+                              availabilityToggleDisabled && "cursor-not-allowed opacity-50",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "inline-flex h-6 w-11 items-center rounded-full bg-white/20 transition",
+                                isAvailabilityEnabledValue
+                                  ? "justify-end bg-zinc-900"
+                                  : "justify-start",
+                              )}
+                            >
+                              <span className="m-1 h-4 w-4 rounded-full bg-white" />
+                            </span>
+                            <span>
+                              {isAvailabilityEnabledValue
+                                ? t(locale, "profile.availability.on")
+                                : t(locale, "profile.availability.off")}
+                            </span>
+                          </button>
+                        </div>
+
+                        <div className="mt-6 space-y-3">
+                          {availabilityDayRows.map((day) => {
+                            const hasRowError =
+                              Boolean(day.error) && isAvailabilityEnabledValue
+                            return (
+                              <div
+                                key={day.dayKey}
+                                className="space-y-1 rounded-2xl border border-white/10 p-3"
+                              >
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <span className="w-16 text-sm font-semibold text-white">
+                                    {day.label}
+                                  </span>
+                                  <div className="flex min-w-0 flex-1 flex-wrap gap-3">
+                                    <div className="min-w-[120px] flex-1">
+                                      <input
+                                        type="time"
+                                        step={900}
+                                        value={day.startValue}
+                                        disabled={availabilityInputsDisabled}
+                                        aria-invalid={hasRowError}
+                                        onChange={(event) =>
+                                          handleAvailabilityTimeChange(
+                                            day.dayKey,
+                                            "start",
+                                            event.target.value,
+                                          )
+                                        }
+                                        className={cn(
+                                          "h-11 w-full rounded-2xl border border-white/30 bg-transparent px-4 text-base font-medium text-white outline-none transition placeholder:text-white/40",
+                                          availabilityInputsDisabled && "opacity-50",
+                                        )}
+                                      />
+                                    </div>
+                                    <div className="min-w-[120px] flex-1">
+                                      <input
+                                        type="time"
+                                        step={900}
+                                        value={day.endValue}
+                                        disabled={availabilityInputsDisabled}
+                                        aria-invalid={hasRowError}
+                                        onChange={(event) =>
+                                          handleAvailabilityTimeChange(
+                                            day.dayKey,
+                                            "end",
+                                            event.target.value,
+                                          )
+                                        }
+                                        className={cn(
+                                          "h-11 w-full rounded-2xl border border-white/30 bg-transparent px-4 text-base font-medium text-white outline-none transition placeholder:text-white/40",
+                                          availabilityInputsDisabled && "opacity-50",
+                                        )}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                {hasRowError ? (
+                                  <p className="text-xs text-red-300">
+                                    {day.error === "incomplete"
+                                      ? t(
+                                          locale,
+                                          "profile.availability.rowErrorIncomplete",
+                                        )
+                                      : t(
+                                          locale,
+                                          "profile.availability.rowErrorInvalid",
+                                        )}
+                                  </p>
+                                ) : null}
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        <p className="mt-4 text-sm text-zinc-400">
+                          {t(locale, "profile.availability.weeklyHint")}
+                        </p>
+                        <p className="text-sm text-zinc-400">
+                          {t(locale, "profile.availability.timezone", {
+                            zone: availabilityTimeZone,
+                          })}
+                        </p>
+                      </div>
+                    </section>
                   </>
                 )}
               </div>
@@ -731,6 +1200,82 @@ export function ExpandedProfileSheet({
       </Dialog.Portal>
     </Dialog.Root>
   )
+}
+
+type AvailabilityWindow = AvailabilityWeekly[AvailabilityDayKey]
+
+function normalizeAvailabilityWeekly(
+  value: AvailabilityWeekly | null,
+): AvailabilityWeekly {
+  if (!value) {
+    return createEmptyAvailabilityWeekly()
+  }
+
+  const next = createEmptyAvailabilityWeekly()
+  for (const key of AVAILABILITY_DAY_KEYS) {
+    const window = value[key]
+    next[key] = {
+      start: isMinuteValue(window?.start) ? window!.start : null,
+      end: isMinuteValue(window?.end) ? window!.end : null,
+    }
+  }
+
+  return next
+}
+
+function cloneAvailabilityWeekly(
+  schedule: AvailabilityWeekly,
+): AvailabilityWeekly {
+  const clone = createEmptyAvailabilityWeekly()
+  for (const key of AVAILABILITY_DAY_KEYS) {
+    clone[key] = {
+      start: schedule[key].start,
+      end: schedule[key].end,
+    }
+  }
+  return clone
+}
+
+function getWeeklyDayError(
+  window: AvailabilityWindow,
+): "incomplete" | "invalid" | null {
+  const hasStart = window.start !== null
+  const hasEnd = window.end !== null
+  if (!hasStart && !hasEnd) return null
+  if (!hasStart || !hasEnd) return "incomplete"
+  if (window.start === window.end) return "invalid"
+  return null
+}
+
+function isMinuteValue(value: number | null | undefined): value is number {
+  if (value === null || value === undefined) return false
+  if (!Number.isInteger(value)) return false
+  return value >= 0 && value < 1440
+}
+
+function minutesToTimeInput(value: number | null): string {
+  if (value === null || Number.isNaN(value)) return ""
+  const hours = Math.floor(value / 60)
+  const minutes = value % 60
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
+function timeInputToMinutes(value: string): number | null {
+  if (!value) return null
+  const [hoursPart, minutesPart] = value.split(":")
+  const hours = Number.parseInt(hoursPart, 10)
+  const minutes = Number.parseInt(minutesPart, 10)
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null
+  }
+  return hours * 60 + minutes
 }
 
 function buildCheckInMeta(activeCheckin: ActiveCheckin, placeName: string) {

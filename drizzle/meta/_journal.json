@@ -43,6 +43,34 @@
       "when": 1766764800000,
       "tag": "0005_internal_admin_panel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1766744685000,
+      "tag": "0006_place_profiles_is_anchored",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1766746297000,
+      "tag": "0007_place_profiles_availability",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1766747486000,
+      "tag": "0008_place_profiles_weekly_availability",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1766751000000,
+      "tag": "0009_ping_events",
+      "breakpoints": true
     }
   ]
 }
