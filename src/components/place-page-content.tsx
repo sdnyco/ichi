@@ -6,7 +6,7 @@ import { ExpandedProfileSheet } from "@/components/expanded-profile-sheet"
 import { PlaceCheckInDrawer } from "@/components/place-check-in-drawer"
 import { PlaceGallery } from "@/components/place-gallery"
 import { PlacePingPanel } from "@/components/place-ping-panel"
-import type { PlaceGalleryEntry } from "@/db/queries/places"
+import type { PlaceGalleryBuckets } from "@/db/queries/places"
 import { t, type Locale } from "@/lib/i18n"
 
 type PlacePageContentProps = {
@@ -15,7 +15,7 @@ type PlacePageContentProps = {
     name: string
     addressText: string | null
   }
-  gallery: PlaceGalleryEntry[]
+  gallery: PlaceGalleryBuckets
   locale: Locale
   initialViewerUserId?: string | null
   initialDrawerAlias?: string
@@ -34,12 +34,13 @@ export function PlacePageContent({
   const handleCheckinSuccess = useCallback(() => {
     setCheckinVersion((version) => version + 1)
   }, [])
+  const activeGalleryCount = gallery.you.length + gallery.now.length
   const galleryCountLabel = useMemo(
     () =>
       t(locale, "place.gallery.count", {
-        count: String(gallery.length),
+        count: String(activeGalleryCount),
       }),
-    [gallery.length, locale],
+    [activeGalleryCount, locale],
   )
 
   return (
@@ -78,7 +79,7 @@ export function PlacePageContent({
         />
 
         <PlaceGallery
-          entries={gallery}
+          gallery={gallery}
           placeId={place.id}
           placeName={place.name}
           locale={locale}

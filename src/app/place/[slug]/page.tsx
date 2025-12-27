@@ -2,7 +2,10 @@ import { cookies, headers } from "next/headers"
 import { notFound } from "next/navigation"
 
 import { PlacePageContent } from "@/components/place-page-content"
-import { getActiveGalleryForPlace, getPlaceBySlug } from "@/db/queries/places"
+import {
+  getPlaceBySlug,
+  getPlaceGalleryBuckets,
+} from "@/db/queries/places"
 import { touchUserLastSeen } from "@/db/queries/users"
 import { generateAlias } from "@/lib/alias"
 import { getLocaleFromHeaders } from "@/lib/i18n"
@@ -51,7 +54,7 @@ export default async function PlacePage({
   if (viewerUserId) {
     await touchUserLastSeen(viewerUserId, now)
   }
-  const gallery = await getActiveGalleryForPlace(
+  const gallery = await getPlaceGalleryBuckets(
     place.id,
     now,
     viewerUserId ?? undefined,
