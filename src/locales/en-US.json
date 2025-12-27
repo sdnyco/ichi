@@ -20,6 +20,7 @@
   "checkin.ping.cta": "Ping anchored users",
   "checkin.ping.pending": "Sending…",
   "checkin.ping.loading": "Checking reachability…",
+  "checkin.ping.dismiss": "No thanks",
   "checkin.ping.success": "Ping sent.",
   "checkin.ping.none": "No one is reachable right now.",
   "checkin.ping.limit": "A ping was already sent here today.",

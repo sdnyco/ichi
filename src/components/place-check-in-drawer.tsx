@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils"
 type PlaceCheckInDrawerProps = {
   placeId: string
   locale: Locale
+  onCheckinSuccess?: () => void
 }
 
 type PlaceContextActiveCheckin = {
@@ -53,6 +54,7 @@ const STEP_IDS = ["duration", "mood", "hint", "alias"] as const
 export function PlaceCheckInDrawer({
   placeId,
   locale,
+  onCheckinSuccess,
 }: PlaceCheckInDrawerProps) {
   const router = useRouter()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -206,6 +208,7 @@ export function PlaceCheckInDrawer({
 
         closeDrawerAndReset()
         await refreshActiveCheckin()
+        onCheckinSuccess?.()
         router.refresh()
       } catch (err) {
         console.error(err)

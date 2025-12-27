@@ -20,6 +20,7 @@
   "checkin.ping.cta": "Angedockte Nutzer anpingen",
   "checkin.ping.pending": "Sende…",
   "checkin.ping.loading": "Prüfe Erreichbarkeit…",
+  "checkin.ping.dismiss": "Nein danke",
   "checkin.ping.success": "Ping gesendet.",
   "checkin.ping.none": "Gerade ist niemand erreichbar.",
   "checkin.ping.limit": "Hier wurde heute bereits ein Ping geschickt.",
