@@ -15,6 +15,7 @@ type PlaceGalleryProps = {
   placeName: string
   locale: Locale
   initialViewerUserId?: string | null
+  renderedAt?: string
 }
 
 export function PlaceGallery({
@@ -23,6 +24,7 @@ export function PlaceGallery({
   placeName,
   locale,
   initialViewerUserId,
+  renderedAt,
 }: PlaceGalleryProps) {
   const router = useRouter()
   const [viewerUserId, setViewerUserId] = useState<string | null>(
@@ -45,7 +47,10 @@ export function PlaceGallery({
     setIsProfileOpen(true)
   }
 
-  const now = useMemo(() => new Date(), [])
+  const referenceNow = useMemo(
+    () => (renderedAt ? new Date(renderedAt) : new Date()),
+    [renderedAt],
+  )
 
   return (
     <>
@@ -70,8 +75,16 @@ export function PlaceGallery({
                 </p>
                 <p className="text-sm text-zinc-500">
                   {t(locale, "place.gallery.meta", {
-                    started: formatRelativeTime(entry.startedAt, now, locale),
-                    expires: formatRelativeTime(entry.expiresAt, now, locale),
+                    started: formatRelativeTime(
+                      entry.startedAt,
+                      referenceNow,
+                      locale,
+                    ),
+                    expires: formatRelativeTime(
+                      entry.expiresAt,
+                      referenceNow,
+                      locale,
+                    ),
                   })}
                 </p>
               </button>

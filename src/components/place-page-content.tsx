@@ -18,6 +18,8 @@ type PlacePageContentProps = {
   gallery: PlaceGalleryEntry[]
   locale: Locale
   initialViewerUserId?: string | null
+  initialDrawerAlias?: string
+  renderedAt: string
 }
 
 export function PlacePageContent({
@@ -25,6 +27,8 @@ export function PlacePageContent({
   gallery,
   locale,
   initialViewerUserId,
+  initialDrawerAlias,
+  renderedAt,
 }: PlacePageContentProps) {
   const [checkinVersion, setCheckinVersion] = useState(0)
   const handleCheckinSuccess = useCallback(() => {
@@ -55,6 +59,7 @@ export function PlacePageContent({
           placeId={place.id}
           placeName={place.name}
           locale={locale}
+          renderedAt={renderedAt}
         />
       </section>
 
@@ -78,6 +83,7 @@ export function PlacePageContent({
           placeName={place.name}
           locale={locale}
           initialViewerUserId={initialViewerUserId}
+          renderedAt={renderedAt}
         />
       </section>
 
@@ -85,6 +91,7 @@ export function PlacePageContent({
         placeId={place.id}
         locale={locale}
         onCheckinSuccess={handleCheckinSuccess}
+        initialAlias={initialDrawerAlias}
       />
     </div>
   )

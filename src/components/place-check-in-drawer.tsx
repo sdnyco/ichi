@@ -36,6 +36,7 @@ type PlaceCheckInDrawerProps = {
   placeId: string
   locale: Locale
   onCheckinSuccess?: () => void
+  initialAlias?: string
 }
 
 type PlaceContextActiveCheckin = {
@@ -55,16 +56,17 @@ export function PlaceCheckInDrawer({
   placeId,
   locale,
   onCheckinSuccess,
+  initialAlias,
 }: PlaceCheckInDrawerProps) {
   const router = useRouter()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
-  const [durationMinutes, setDurationMinutes] = useState(
+  const [durationMinutes, setDurationMinutes] = useState<number>(
     DURATION_OPTIONS[0].minutes,
   )
-  const [mood, setMood] = useState(MOOD_OPTIONS[0].id)
+  const [mood, setMood] = useState<string>(MOOD_OPTIONS[0].id)
   const [recognizabilityHint, setRecognizabilityHint] = useState("")
-  const [alias, setAlias] = useState(() => generateAlias())
+  const [alias, setAlias] = useState(() => initialAlias ?? generateAlias())
   const [error, setError] = useState<string | null>(null)
   const [accountDisabled, setAccountDisabled] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)

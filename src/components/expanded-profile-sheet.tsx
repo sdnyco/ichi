@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
-import { RefreshCw } from "lucide-react"
+import { ChevronDown, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { HooksPicker } from "@/components/profile/hooks-picker"
@@ -90,12 +90,14 @@ type ExpandedProfileSheetProps = {
   placeId: string
   placeName: string
   locale: Locale
+  renderedAt: string
 }
 
 export function ExpandedProfileSheet({
   placeId,
   placeName,
   locale,
+  renderedAt,
 }: ExpandedProfileSheetProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -104,6 +106,7 @@ export function ExpandedProfileSheet({
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [accountDisabled, setAccountDisabled] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
   const [aliasValue, setAliasValue] = useState("")
   const [moodValue, setMoodValue] = useState<string>(MOOD_OPTIONS[0].id)
@@ -125,6 +128,10 @@ export function ExpandedProfileSheet({
   const [saveBadge, setSaveBadge] = useState<SaveBadgeState>("idle")
 
   const pendingSavesRef = useRef(0)
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
   const savedTimeoutRef = useRef<number | null>(null)
   const lastAgeSubmitted = useRef<string | null>(null)
   const lastHeightSubmitted = useRef<number | null>(null)
@@ -340,7 +347,7 @@ export function ExpandedProfileSheet({
   }[saveBadge]
 
   const checkInMeta = activeCheckin
-    ? buildCheckInMeta(activeCheckin, placeName)
+    ? buildCheckInMeta(activeCheckin, placeName, renderedAt)
     : null
 
   const handleRegenerateAlias = useCallback(() => {
@@ -756,6 +763,42 @@ export function ExpandedProfileSheet({
     ? t(locale, "profile.height.helper")
     : t(locale, "profile.height.error")
 
+  const ageDisplayValue =
+    ageBandValue ?? t(locale, "profile.age.placeholder")
+
+  const ageSelectElement = hydrated ? (
+    <Select
+      value={ageBandValue ?? CLEAR_AGE_VALUE}
+      onValueChange={(value) =>
+        setAgeBandValue(value === CLEAR_AGE_VALUE ? null : value)
+      }
+    >
+      <SelectTrigger className="h-12 border-white/30 bg-transparent text-white">
+        <SelectValue placeholder={t(locale, "profile.age.placeholder")} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={CLEAR_AGE_VALUE}>
+          {t(locale, "profile.age.unset")}
+        </SelectItem>
+        {AGE_BANDS.map((band) => (
+          <SelectItem key={band} value={band}>
+            {band}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ) : (
+    <div
+      aria-disabled="true"
+      className="flex h-12 w-full items-center justify-between rounded-xl border border-white/30 bg-transparent px-3 text-sm text-white opacity-80"
+    >
+      <span className={cn("truncate", !ageBandValue && "text-white/60")}>
+        {ageDisplayValue}
+      </span>
+      <ChevronDown className="h-4 w-4 text-white/60" aria-hidden />
+    </div>
+  )
+
   return (
     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
       <Dialog.Trigger asChild>
@@ -1009,30 +1052,7 @@ export function ExpandedProfileSheet({
                           <label className="text-sm font-medium uppercase tracking-wide text-zinc-400">
                             {t(locale, "profile.age.label")}
                           </label>
-                          <Select
-                            value={ageBandValue ?? CLEAR_AGE_VALUE}
-                            onValueChange={(value) =>
-                              setAgeBandValue(
-                                value === CLEAR_AGE_VALUE ? null : value,
-                              )
-                            }
-                          >
-                            <SelectTrigger className="h-12 border-white/30 bg-transparent text-white">
-                              <SelectValue
-                                placeholder={t(locale, "profile.age.placeholder")}
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={CLEAR_AGE_VALUE}>
-                                {t(locale, "profile.age.unset")}
-                              </SelectItem>
-                              {AGE_BANDS.map((band) => (
-                                <SelectItem key={band} value={band}>
-                                  {band}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {ageSelectElement}
                         </div>
 
                         <div className="space-y-3 rounded-3xl border border-white/10 bg-white/5 p-4">
@@ -1278,8 +1298,12 @@ function timeInputToMinutes(value: string): number | null {
   return hours * 60 + minutes
 }
 
-function buildCheckInMeta(activeCheckin: ActiveCheckin, placeName: string) {
-  const now = Date.now()
+function buildCheckInMeta(
+  activeCheckin: ActiveCheckin,
+  placeName: string,
+  renderedAt: string,
+) {
+  const now = new Date(renderedAt).getTime()
   const startedMinutes = Math.max(
     0,
     Math.round((now - new Date(activeCheckin.startedAt).getTime()) / 60000),

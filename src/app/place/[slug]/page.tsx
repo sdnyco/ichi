@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { PlacePageContent } from "@/components/place-page-content"
 import { getActiveGalleryForPlace, getPlaceBySlug } from "@/db/queries/places"
 import { touchUserLastSeen } from "@/db/queries/users"
+import { generateAlias } from "@/lib/alias"
 import { getLocaleFromHeaders } from "@/lib/i18n"
 
 type PlacePageProps = {
@@ -59,6 +60,8 @@ export default async function PlacePage({
     await headers(),
     extractLocaleOverride(query),
   )
+  const initialDrawerAlias = generateAlias()
+  const renderedAt = now.toISOString()
 
   return (
     <PlacePageContent
@@ -70,6 +73,8 @@ export default async function PlacePage({
       gallery={gallery}
       locale={locale}
       initialViewerUserId={viewerUserId}
+      initialDrawerAlias={initialDrawerAlias}
+      renderedAt={renderedAt}
     />
   )
 }
