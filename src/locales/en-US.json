@@ -48,6 +48,7 @@
   "checkin.hint.counter": "{count} chars left",
   "checkin.alias.title": "Alias confirmation",
   "checkin.alias.description": "This is how you appear in the gallery. Regenerate if you want a fresh combo.",
+  "checkin.alias.legend": "You can confirm it or re-generate if you are looking for something spicier.",
   "checkin.alias.regenerate": "Try another alias",
   "profile.trigger": "Your profile",
   "profile.sheet.title": "Expanded profile",

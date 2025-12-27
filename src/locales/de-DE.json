@@ -48,6 +48,7 @@
   "checkin.hint.counter": "{count} Zeichen übrig",
   "checkin.alias.title": "Alias bestätigen",
   "checkin.alias.description": "So erscheinst du in der Galerie. Bei Bedarf neu generieren.",
+  "checkin.alias.legend": "Du kannst ihn bestätigen oder neu würfeln, wenn du etwas Würzigeres suchst.",
   "checkin.alias.regenerate": "Alias neu würfeln",
   "profile.trigger": "Dein Profil",
   "profile.sheet.title": "Erweitertes Profil",

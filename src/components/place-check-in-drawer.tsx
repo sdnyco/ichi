@@ -3,12 +3,15 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
   type ReactNode,
 } from "react"
 import { useRouter } from "next/navigation"
+import { RotateCcw } from "lucide-react"
 
 import { WheelPicker, WheelPickerWrapper } from "@/components/wheel-picker"
 import { Button } from "@/components/ui/button"
@@ -17,6 +20,7 @@ import {
   DrawerBody,
   DrawerContent,
   DrawerFooter,
+  DrawerTitle,
 } from "@/components/ui/drawer"
 import { generateAlias } from "@/lib/alias"
 import {
@@ -214,6 +218,119 @@ export function PlaceCheckInDrawer({
   const isFinalStep = stepIndex === TOTAL_STEPS - 1
   const currentStepId = STEP_IDS[stepIndex]
 
+  const stepContent = (() => {
+    if (currentStepId === "duration") {
+      return (
+        <StepLayout
+          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          title={t(locale, "checkin.duration.title")}
+          legend={t(locale, "checkin.duration.description")}
+        >
+          <WheelPickerWrapper>
+            <WheelPicker
+              value={durationMinutes}
+              onValueChange={(value) => setDurationMinutes(Number(value))}
+              options={durationOptions}
+              visibleCount={8}
+            />
+          </WheelPickerWrapper>
+        </StepLayout>
+      )
+    }
+
+    if (currentStepId === "mood") {
+      return (
+        <StepLayout
+          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          title={t(locale, "checkin.mood.title")}
+          legend={t(locale, "checkin.mood.description")}
+        >
+          <div className="grid grid-cols-2 gap-3">
+            {moodOptions.map((option) => (
+              <button
+                type="button"
+                key={option.id}
+                onClick={() => setMood(option.id)}
+                className={cn(
+                  "rounded-2xl border px-4 py-3 text-left text-sm font-medium transition",
+                  mood === option.id
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </StepLayout>
+      )
+    }
+
+    if (currentStepId === "hint") {
+      return (
+        <StepLayout
+          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          title={t(locale, "checkin.hint.title")}
+          legend={t(locale, "checkin.hint.description")}
+        >
+          <div className="space-y-3">
+            <div>
+              <textarea
+                value={recognizabilityHint}
+                onChange={(event) => {
+                  if (event.target.value.length > MAX_HINT_LENGTH) return
+                  setRecognizabilityHint(event.target.value)
+                }}
+                maxLength={MAX_HINT_LENGTH}
+                rows={4}
+                placeholder={t(locale, "checkin.hint.placeholder")}
+                className="w-full rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-900 shadow-inner focus:border-zinc-400 focus:outline-none"
+              />
+              <p className="text-right text-xs text-zinc-400">
+                {t(locale, "checkin.hint.counter", {
+                  count: String(MAX_HINT_LENGTH - recognizabilityHint.length),
+                })}
+              </p>
+            </div>
+          </div>
+        </StepLayout>
+      )
+    }
+
+    if (currentStepId === "alias") {
+      return (
+        <StepLayout
+          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          title={t(locale, "checkin.alias.title")}
+          legend={t(locale, "checkin.alias.description")}
+        >
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 rounded-3xl border border-zinc-200 bg-zinc-900/5 px-6 py-4 text-center text-zinc-900">
+                <p className="text-xl font-semibold">{alias}</p>
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                className="h-12 w-12 rounded-2xl bg-zinc-900 text-white hover:bg-zinc-800"
+                onClick={handleRegenerateAlias}
+                disabled={isPending}
+                aria-label={t(locale, "checkin.alias.regenerate")}
+              >
+                <RotateCcw className="h-5 w-5" aria-hidden />
+              </Button>
+            </div>
+            <p className="text-sm text-zinc-500">
+              {t(locale, "checkin.alias.legend")}
+            </p>
+          </div>
+        </StepLayout>
+      )
+    }
+
+    return null
+  })()
+
   const drawerCtaDisabled =
     isPending || accountDisabled || hasActiveCheckin || !userId
 
@@ -221,99 +338,15 @@ export function PlaceCheckInDrawer({
     <>
       <Drawer open={isDrawerOpen} onOpenChange={handleDrawerOpenChange}>
         <DrawerContent>
+          <DrawerTitle className="sr-only">
+            {t(locale, "checkin.cta.title")}
+          </DrawerTitle>
           <div className="flex h-full flex-col">
             <DrawerBody className="flex-1 pt-4">
-              {currentStepId === "duration" ? (
-                <StepLayout
-                  stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
-                  title={t(locale, "checkin.duration.title")}
-                  legend={t(locale, "checkin.duration.description")}
-                >
-                  <WheelPickerWrapper>
-                    <WheelPicker
-                      value={durationMinutes}
-                      onValueChange={(value) => setDurationMinutes(Number(value))}
-                      options={durationOptions}
-                      visibleCount={8}
-                    />
-                  </WheelPickerWrapper>
-                </StepLayout>
-              ) : null}
-
-              {currentStepId === "mood" ? (
-                <StepLayout
-                  stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
-                  title={t(locale, "checkin.mood.title")}
-                  legend={t(locale, "checkin.mood.description")}
-                >
-                  <div className="grid grid-cols-2 gap-3">
-                    {moodOptions.map((option) => (
-                      <button
-                        type="button"
-                        key={option.id}
-                        onClick={() => setMood(option.id)}
-                        className={cn(
-                          "rounded-2xl border px-4 py-3 text-left text-sm font-medium transition",
-                          mood === option.id
-                            ? "border-zinc-900 bg-zinc-900 text-white"
-                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300",
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </StepLayout>
-              ) : null}
-
-              {currentStepId === "hint" ? (
-                <StepLayout
-                  stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
-                  title={t(locale, "checkin.hint.title")}
-                  legend={t(locale, "checkin.hint.description")}
-                >
-                  <div className="space-y-3">
-                    <textarea
-                      value={recognizabilityHint}
-                      onChange={(event) => {
-                        if (event.target.value.length > MAX_HINT_LENGTH) return
-                        setRecognizabilityHint(event.target.value)
-                      }}
-                      maxLength={MAX_HINT_LENGTH}
-                      rows={4}
-                      placeholder={t(locale, "checkin.hint.placeholder")}
-                      className="w-full rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-900 shadow-inner focus:border-zinc-400 focus:outline-none"
-                    />
-                    <p className="text-right text-xs text-zinc-400">
-                      {t(locale, "checkin.hint.counter", {
-                        count: String(MAX_HINT_LENGTH - recognizabilityHint.length),
-                      })}
-                    </p>
-                  </div>
-                </StepLayout>
-              ) : null}
-
-              {currentStepId === "alias" ? (
-                <StepLayout
-                  stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
-                  title={t(locale, "checkin.alias.title")}
-                  legend={t(locale, "checkin.alias.description")}
-                >
-                  <div className="space-y-4">
-                    <div className="rounded-3xl border border-zinc-900 bg-zinc-900 px-6 py-5 text-center text-white shadow">
-                      <p className="text-2xl font-semibold">{alias}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="text-sm font-medium text-zinc-600 underline underline-offset-4 hover:text-zinc-900"
-                      onClick={handleRegenerateAlias}
-                      disabled={isPending}
-                    >
-                      {t(locale, "checkin.alias.regenerate")}
-                    </Button>
-                  </div>
-                </StepLayout>
+              {stepContent ? (
+                <AnimatedStepContent stepKey={currentStepId}>
+                  {stepContent}
+                </AnimatedStepContent>
               ) : null}
             </DrawerBody>
 
@@ -392,13 +425,46 @@ function StepLayout({
   return (
     <div className="flex h-full flex-col gap-5">
       <div className="space-y-2">
-        <p className="text-xs uppercase tracking-wide text-zinc-500">
-          {stepLabel}
-        </p>
-        <h3 className="text-2xl font-semibold text-zinc-900">{title}</h3>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-zinc-500">
+            {stepLabel}
+          </p>
+          <h3 className="text-2xl font-semibold text-zinc-900">{title}</h3>
+        </div>
         {legend ? <p className="text-sm text-zinc-500">{legend}</p> : null}
       </div>
       <div className="flex-1">{children}</div>
+    </div>
+  )
+}
+
+function AnimatedStepContent({
+  stepKey,
+  children,
+}: {
+  stepKey: string
+  children: ReactNode
+}) {
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  const [height, setHeight] = useState<number | null>(null)
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return
+    const node = contentRef.current
+    if (!node) return
+    const updateHeight = () => setHeight(node.getBoundingClientRect().height)
+    updateHeight()
+    const observer = new ResizeObserver(() => updateHeight())
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [stepKey])
+
+  return (
+    <div
+      className="overflow-hidden transition-[height] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+      style={{ height: height === null ? "auto" : `${height}px` }}
+    >
+      <div ref={contentRef}>{children}</div>
     </div>
   )
 }

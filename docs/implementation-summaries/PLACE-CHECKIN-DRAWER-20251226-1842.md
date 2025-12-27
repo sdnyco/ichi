@@ -16,5 +16,13 @@
 - Added keyframed overlay/content animations plus a tappable handle in `src/components/ui/drawer.tsx`, so open/close transitions feel native even before we wire up drag gestures.
 - Simplified the drawer shell in `src/components/place-check-in-drawer.tsx` by removing the duplicate header/progress row; the step layout now owns the only title + legend, and the close button was dropped in favor of the interactive handle + overlay dismissal.
 - Documented the animation utilities in `src/app/globals.css` so future drawers can reuse the same easing curves.
+- Added an `sr-only` `DrawerTitle` so Radix keeps the accessibility contract even though the visible heading moved into each step shell.
+
+## 2025-12-26 Updates (Night)
+
+- Replaced the custom Radix drawer wrapper with shadcn’s Vaul-based primitive via `npx shadcn@latest add drawer`, then re-added our styling niceties (rounded top, blur overlay, tappable handle, DrawerBody helper).
+- `src/components/place-check-in-drawer.tsx` now consumes the Vaul drawer seamlessly; no behavioral changes besides inheriting Vaul’s native drag/physics.
+- `package.json` includes the `vaul` dependency so future drawers can keep using the shared primitive.
+- The drawer height now animates smoothly using an `AnimatedStepContent` wrapper that measures each step’s content with `ResizeObserver`; snap points were removed so steps can grow/shrink naturally, while aliases keep the icon-style regenerate control and the new legend copy (`checkin.alias.legend`) in both locales.
 
 
