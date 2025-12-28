@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type Ref } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { ChevronDown, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -91,6 +91,7 @@ type ExpandedProfileSheetProps = {
   placeName: string
   locale: Locale
   renderedAt: string
+  triggerRef?: Ref<HTMLButtonElement>
 }
 
 export function ExpandedProfileSheet({
@@ -98,6 +99,7 @@ export function ExpandedProfileSheet({
   placeName,
   locale,
   renderedAt,
+  triggerRef,
 }: ExpandedProfileSheetProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -802,7 +804,12 @@ export function ExpandedProfileSheet({
   return (
     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
       <Dialog.Trigger asChild>
-        <Button variant="outline" size="lg" className="w-full justify-center">
+        <Button
+          ref={triggerRef}
+          variant="outline"
+          size="lg"
+          className="w-full justify-center"
+        >
           {t(locale, "profile.trigger")}
         </Button>
       </Dialog.Trigger>

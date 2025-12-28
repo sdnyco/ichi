@@ -27,10 +27,18 @@ export type PlaceGalleryAnchoredEntry = {
   aliasGenerated: boolean
 }
 
+export type PlaceGalleryViewerProfile = {
+  userId: string
+  alias: string
+  aliasGenerated: boolean
+}
+
 export type PlaceGalleryBuckets = {
   you: PlaceGalleryEntry[]
   now: PlaceGalleryEntry[]
   anchored: PlaceGalleryAnchoredEntry[]
+  viewerHasEverCheckedIn: boolean
+  viewerProfile: PlaceGalleryViewerProfile | null
 }
 
 export async function getPlaceBySlug(slug: string): Promise<PlaceRecord | null> {
@@ -163,10 +171,57 @@ export async function getPlaceGalleryBuckets(
     excludedAnchoredUsers,
   )
 
+  let viewerHasEverCheckedIn = false
+  let viewerProfile: PlaceGalleryViewerProfile | null = null
+
+  if (viewerUserId) {
+    const historicalCheckin = await db.query.checkIns.findFirst({
+      where: (tbl, operators) =>
+        operators.and(
+          operators.eq(tbl.userId, viewerUserId),
+          operators.eq(tbl.placeId, placeId),
+        ),
+      columns: { id: true },
+    })
+
+    viewerHasEverCheckedIn = Boolean(historicalCheckin)
+
+    if (viewerHasEverCheckedIn) {
+      const profileRecord = await db.query.placeProfiles.findFirst({
+        where: (tbl, operators) =>
+          operators.and(
+            operators.eq(tbl.userId, viewerUserId),
+            operators.eq(tbl.placeId, placeId),
+          ),
+        columns: {
+          alias: true,
+          aliasGenerated: true,
+        },
+      })
+
+      if (profileRecord) {
+        viewerProfile = {
+          userId: viewerUserId,
+          alias: profileRecord.alias,
+          aliasGenerated: profileRecord.aliasGenerated,
+        }
+      } else if (youEntries.length > 0) {
+        const fallback = youEntries[0]
+        viewerProfile = {
+          userId: fallback.userId,
+          alias: fallback.alias,
+          aliasGenerated: fallback.aliasGenerated,
+        }
+      }
+    }
+  }
+
   return {
     you: youEntries,
     now: nowEntries,
     anchored: anchoredEntries,
+    viewerHasEverCheckedIn,
+    viewerProfile,
   }
 }
 

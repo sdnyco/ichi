@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { ExpandedProfileSheet } from "@/components/expanded-profile-sheet"
 import { PlaceCheckInDrawer } from "@/components/place-check-in-drawer"
 import { PlaceGallery } from "@/components/place-gallery"
 import { PlacePingPanel } from "@/components/place-ping-panel"
 import type { PlaceGalleryBuckets } from "@/db/queries/places"
+import { getOrCreateLocalUserId } from "@/lib/identity"
 import { t, type Locale } from "@/lib/i18n"
 
 type PlacePageContentProps = {
@@ -30,7 +32,10 @@ export function PlacePageContent({
   initialDrawerAlias,
   renderedAt,
 }: PlacePageContentProps) {
+  const router = useRouter()
+  const profileTriggerRef = useRef<HTMLButtonElement | null>(null)
   const [checkinVersion, setCheckinVersion] = useState(0)
+  const viewerRefreshRequested = useRef(false)
   const handleCheckinSuccess = useCallback(() => {
     setCheckinVersion((version) => version + 1)
   }, [])
@@ -42,6 +47,24 @@ export function PlacePageContent({
       }),
     [activeGalleryCount, locale],
   )
+
+  const handleSelfProfileRequested = useCallback(() => {
+    profileTriggerRef.current?.click()
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (initialViewerUserId || viewerRefreshRequested.current) return
+    viewerRefreshRequested.current = true
+    try {
+      const localId = getOrCreateLocalUserId()
+      if (localId) {
+        router.refresh()
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  }, [initialViewerUserId, router])
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-10 px-6 pb-32 pt-12">
@@ -61,6 +84,7 @@ export function PlacePageContent({
           placeName={place.name}
           locale={locale}
           renderedAt={renderedAt}
+          triggerRef={profileTriggerRef}
         />
       </section>
 
@@ -76,6 +100,7 @@ export function PlacePageContent({
           placeId={place.id}
           locale={locale}
           checkinVersion={checkinVersion}
+          initialViewerUserId={initialViewerUserId}
         />
 
         <PlaceGallery
@@ -85,6 +110,8 @@ export function PlacePageContent({
           locale={locale}
           initialViewerUserId={initialViewerUserId}
           renderedAt={renderedAt}
+          checkinVersion={checkinVersion}
+          onSelfProfileRequested={handleSelfProfileRequested}
         />
       </section>
 

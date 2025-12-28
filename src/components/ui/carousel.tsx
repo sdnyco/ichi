@@ -29,7 +29,7 @@ type CarouselContextValue = {
 
 const CarouselContext = React.createContext<CarouselContextValue | null>(null)
 
-function useCarousel() {
+export function useCarousel() {
   const context = React.useContext(CarouselContext)
   if (!context) {
     throw new Error("useCarousel must be used within <Carousel>")
@@ -100,7 +100,7 @@ export const CarouselContent = React.forwardRef<
       ref={ref}
       className={cn(
         "flex",
-        orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
+        orientation === "horizontal" ? "gap-4" : "flex-col gap-4",
         className,
       )}
       {...props}
@@ -113,13 +113,11 @@ export const CarouselItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
-  const { orientation } = useCarousel()
   return (
     <div
       ref={ref}
       className={cn(
         "min-w-0 shrink-0 grow-0 basis-full",
-        orientation === "horizontal" ? "pl-4" : "pt-4",
         className,
       )}
       {...props}

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { getOrCreateLocalUserId } from "@/lib/identity"
 import { t, type Locale } from "@/lib/i18n"
 
 const PING_DISMISS_KEY_PREFIX = "ichi:pingDismissed"
@@ -15,6 +14,7 @@ type PlacePingPanelProps = {
   placeId: string
   locale: Locale
   checkinVersion?: number
+  initialViewerUserId?: string | null
 }
 
 type PlaceContextActiveCheckin = {
@@ -48,8 +48,9 @@ export function PlacePingPanel({
   placeId,
   locale,
   checkinVersion = 0,
+  initialViewerUserId,
 }: PlacePingPanelProps) {
-  const [userId, setUserId] = useState<string | null>(null)
+  const userId = initialViewerUserId ?? null
   const [activeCheckin, setActiveCheckin] =
     useState<PlaceContextActiveCheckin | null>(null)
   const [pingEligibility, setPingEligibility] =
@@ -162,11 +163,6 @@ export function PlacePingPanel({
     },
     [activeCheckin, placeId, userId],
   )
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    setUserId(getOrCreateLocalUserId())
-  }, [])
 
   useEffect(() => {
     void refreshActiveCheckin()
