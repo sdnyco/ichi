@@ -252,7 +252,7 @@ export function PlaceGallery({
             opts={{ align: "center", containScroll: "trimSnaps" }}
             className="w-full px-2 sm:px-4"
           >
-            <CarouselContent>
+            <CarouselContent className="py-4">
               {galleryItems.map((item) => (
                 <CarouselItem
                   key={item.key}
