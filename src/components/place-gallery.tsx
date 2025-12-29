@@ -5,7 +5,6 @@ import type { EmblaEventType } from "embla-carousel"
 import { useRouter } from "next/navigation"
 
 import { OtherProfileSheet } from "@/components/profile/other-profile-sheet"
-import { Badge } from "@/components/ui/badge"
 import {
   Carousel,
   CarouselContent,
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/carousel"
 import type { CarouselApi } from "@/components/ui/carousel"
 import type { PlaceGalleryBuckets, PlaceGalleryEntry } from "@/db/queries/places"
+import { HOOK_LABEL_BY_ID } from "@/lib/hooks-catalog"
 import { t, type Locale } from "@/lib/i18n"
 import { formatDurationToken } from "@/lib/time"
 import { cn } from "@/lib/utils"
@@ -42,7 +42,11 @@ type GalleryItem = {
   alias: string
   metadata?: string
   checkInId?: string
-  markerLabel?: string
+  mood?: string | null
+  hooks?: string[] | null
+  startedAt?: Date
+  lastSeenAt?: Date | null
+  isViewerCheckedIn?: boolean
 }
 
 export function PlaceGallery({
@@ -135,6 +139,7 @@ export function PlaceGallery({
     const resolvedSelfAlias = gallery.viewerProfile?.alias ?? latestSelfEntry?.alias
     const resolvedSelfUserId =
       gallery.viewerProfile?.userId ?? latestSelfEntry?.userId ?? viewerUserId ?? null
+    const viewerProfileHooks = gallery.viewerProfile?.lastHooks ?? null
 
     let selfItem: GalleryItem | null = null
 
@@ -148,7 +153,10 @@ export function PlaceGallery({
           ? formatCheckInMeta(latestSelfEntry, referenceNow, locale)
           : undefined,
         checkInId: latestSelfEntry?.id,
-        markerLabel: t(locale, "place.gallery.marker.you"),
+        mood: latestSelfEntry?.mood ?? null,
+        hooks: latestSelfEntry?.hooks ?? viewerProfileHooks ?? null,
+        startedAt: latestSelfEntry?.startedAt,
+        isViewerCheckedIn: Boolean(latestSelfEntry),
       }
     }
 
@@ -161,7 +169,10 @@ export function PlaceGallery({
             alias: entry.alias,
             metadata: formatCheckInMeta(entry, referenceNow, locale),
             checkInId: entry.id,
-            markerLabel: t(locale, "place.gallery.marker.you"),
+            mood: entry.mood,
+            hooks: entry.hooks,
+            startedAt: entry.startedAt,
+            isViewerCheckedIn: true,
           }))
         : []
 
@@ -174,6 +185,9 @@ export function PlaceGallery({
         alias: entry.alias,
         metadata: formatCheckInMeta(entry, referenceNow, locale),
         checkInId: entry.id,
+        mood: entry.mood,
+        hooks: entry.hooks,
+        startedAt: entry.startedAt,
       }))
 
     const anchoredItems = [...gallery.anchored]
@@ -184,7 +198,7 @@ export function PlaceGallery({
         userId: entry.userId,
         alias: entry.alias,
         metadata: t(locale, "place.gallery.metaAnchored"),
-        markerLabel: t(locale, "place.gallery.marker.anchored"),
+        lastSeenAt: entry.lastSeenAt,
       }))
 
     const otherItems = [...activeItems, ...anchoredItems]
@@ -268,7 +282,12 @@ export function PlaceGallery({
                   key={item.key}
                   className="basis-[85%] sm:basis-[60%] md:basis-[45%] lg:basis-[35%] xl:basis-[28%] max-w-sm"
                 >
-                  <GalleryCard item={item} onSelect={handleCardClick} locale={locale} />
+                  <GalleryCard
+                    item={item}
+                    onSelect={handleCardClick}
+                    locale={locale}
+                    referenceNow={referenceNow}
+                  />
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -311,13 +330,16 @@ function GalleryCard({
   item,
   onSelect,
   locale,
+  referenceNow,
 }: {
   item: GalleryItem
   onSelect: (item: GalleryItem) => void
   locale: Locale
+  referenceNow: Date
 }) {
   const isSelf = item.kind === "self"
   const isAnchored = item.kind === "anchored"
+  const isActive = item.kind === "active"
   const isPlaceholder = item.kind === "placeholder"
 
   if (isPlaceholder) {
@@ -328,34 +350,140 @@ function GalleryCard({
     )
   }
 
+  const pill = getCardStatusPill(item, referenceNow)
+  const hookIds =
+    item.kind === "anchored"
+      ? []
+      : (item.hooks ?? [])
+          .filter((hook): hook is string => Boolean(hook && hook.trim()))
+          .slice(0, 3)
+  const hookLabels = hookIds.map((hookId) => {
+    const labelKey = HOOK_LABEL_BY_ID[hookId]
+    return labelKey ? t(locale, labelKey) : hookId
+  })
+  const showHooks = hookLabels.length > 0 && (isSelf || isActive)
+  const showIncompleteNotice = isSelf && hookIds.length === 0
+  const hookLabel = isSelf ? "What you're up for:" : "What they are up for:"
+  const headerText = getCardHeaderText(item)
+
   return (
     <button
       type="button"
       onClick={() => onSelect(item)}
       className={cn(
-        "flex h-full w-full flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-5 text-left shadow-lg shadow-zinc-200/80 transition hover:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20",
-        isSelf && "border-zinc-900 hover:border-zinc-900",
+        "group relative flex h-full min-h-[360px] w-full flex-col rounded-2xl border border-white/10 bg-neutral-950 p-6 text-left text-neutral-50 shadow-lg shadow-black/30 transition hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
+        isSelf && "border-yellow-300 hover:border-yellow-200",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-lg font-medium text-zinc-900">{item.alias}</p>
-        {item.markerLabel ? (
-          <Badge
-            className={cn(
-              "border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-700",
-              isSelf && "border-zinc-900 text-zinc-900",
-              isAnchored && "border-amber-200 bg-amber-50 text-amber-800",
-            )}
-          >
-            {item.markerLabel}
-          </Badge>
-        ) : null}
+      <div className="flex h-full flex-col gap-5">
+        <div className="space-y-4">
+          {pill ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-neutral-100">
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  pill.dotColor === "green" ? "bg-emerald-400" : "bg-zinc-500",
+                )}
+              />
+              {pill.text}
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <p className="text-2xl font-semibold leading-snug">{headerText}</p>
+          </div>
+        </div>
+
+        <div className="h-px w-full border-t border-dashed border-white/15" />
+
+        <div className="flex flex-1 flex-col gap-4">
+          {showHooks ? (
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-wide text-neutral-400">{hookLabel}</p>
+              <div className="space-y-2">
+                {hookLabels.map((hook, index) => (
+                  <div
+                    key={`${hook}-${index}`}
+                    className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-neutral-50"
+                  >
+                    {hook}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {showIncompleteNotice ? (
+            <div className="rounded-2xl border border-dashed border-yellow-200/60 bg-yellow-100/5 p-4 text-sm text-yellow-50">
+              <p className="mb-3 leading-relaxed">
+                Others currently see very little about you. You can add more details anytime.
+              </p>
+              <span className="inline-flex items-center justify-center rounded-full bg-yellow-200/20 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-yellow-50">
+                View/Edit Profile &rarr;
+              </span>
+            </div>
+          ) : null}
+        </div>
       </div>
-      {item.metadata ? (
-        <p className="text-sm text-zinc-500">{item.metadata}</p>
-      ) : null}
     </button>
   )
+}
+
+type CardStatusPill =
+  | {
+      text: string
+      dotColor: "green" | "gray"
+    }
+  | null
+
+function getCardStatusPill(item: GalleryItem, referenceNow: Date): CardStatusPill {
+  if (item.kind === "self") {
+    return {
+      text: "This is you",
+      dotColor: item.isViewerCheckedIn ? "green" : "gray",
+    }
+  }
+
+  if (item.kind === "active") {
+    const compact = formatCompactDuration(referenceNow, item.startedAt)
+    return {
+      text: compact ? `Checked in ${compact} ago` : "Checked in",
+      dotColor: "green",
+    }
+  }
+
+  if (item.kind === "anchored") {
+    const compact = formatCompactDuration(referenceNow, item.lastSeenAt ?? null)
+    return {
+      text: compact ? `Last seen ${compact} ago` : "Last seen —",
+      dotColor: "gray",
+    }
+  }
+
+  return null
+}
+
+function getCardHeaderText(item: GalleryItem) {
+  if (item.mood && (item.kind === "self" || item.kind === "active")) {
+    return `${item.alias} is ${item.mood}`
+  }
+  return item.alias
+}
+
+function formatCompactDuration(referenceNow: Date, target?: Date | null) {
+  if (!target) return null
+  const diffMs = Math.max(0, referenceNow.getTime() - target.getTime())
+  const minutes = Math.floor(diffMs / 60000)
+
+  if (minutes >= 60 * 24) {
+    return `${Math.floor(minutes / (60 * 24))}d`
+  }
+
+  if (minutes >= 60) {
+    return `${Math.floor(minutes / 60)}h`
+  }
+
+  return `${minutes}m`
 }
 
 const AUTO_SCROLL_DELAY_MS = 2200

@@ -808,8 +808,9 @@ export function ExpandedProfileSheet({
           ref={triggerRef}
           variant="outline"
           size="lg"
-          className="w-full justify-center"
+          className="sr-only pointer-events-none"
         >
+          {/* Hidden trigger retained for potential debugging toggles */}
           {t(locale, "profile.trigger")}
         </Button>
       </Dialog.Trigger>

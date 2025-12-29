@@ -413,7 +413,13 @@ These items are **explicitly out of MVP scope**, but should be revisited and con
 
 ### Misc
 
-* [ ] Fix the god-damn right-padding issue in the profile gallery
+* [x] Fix the god-damn right-padding issue in the profile gallery
+
+* [ ] Introduce "local" vs. "traveler"
+
+* [ ] Show "lastHooks" from expired check-in for anchored users
+
+* [ ] Ping 1-to-1
 
 * [ ] _Confirm_ email before allowing pings (abuse potential)
 

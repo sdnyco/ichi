@@ -18,6 +18,8 @@ export type PlaceGalleryEntry = {
   isAnchored: boolean
   startedAt: Date
   expiresAt: Date
+  mood: string | null
+  hooks: string[] | null
 }
 
 export type PlaceGalleryAnchoredEntry = {
@@ -25,12 +27,14 @@ export type PlaceGalleryAnchoredEntry = {
   userId: string
   alias: string
   aliasGenerated: boolean
+  lastSeenAt: Date | null
 }
 
 export type PlaceGalleryViewerProfile = {
   userId: string
   alias: string
   aliasGenerated: boolean
+  lastHooks: string[] | null
 }
 
 export type PlaceGalleryBuckets = {
@@ -89,6 +93,8 @@ export async function getActiveGalleryForPlace(
       alias: placeProfiles.alias,
       aliasGenerated: placeProfiles.aliasGenerated,
       isAnchored: placeProfiles.isAnchored,
+      mood: checkIns.mood,
+      hooks: checkIns.hooks,
     })
     .from(checkIns)
     .innerJoin(
@@ -140,6 +146,7 @@ async function getAnchoredGalleryEntries(
       userId: placeProfiles.userId,
       alias: placeProfiles.alias,
       aliasGenerated: placeProfiles.aliasGenerated,
+      lastSeenAt: users.lastSeenAt,
     })
     .from(placeProfiles)
     .innerJoin(users, eq(users.id, placeProfiles.userId))
@@ -196,6 +203,7 @@ export async function getPlaceGalleryBuckets(
         columns: {
           alias: true,
           aliasGenerated: true,
+          lastHooks: true,
         },
       })
 
@@ -204,6 +212,7 @@ export async function getPlaceGalleryBuckets(
           userId: viewerUserId,
           alias: profileRecord.alias,
           aliasGenerated: profileRecord.aliasGenerated,
+          lastHooks: profileRecord.lastHooks ?? null,
         }
       } else if (youEntries.length > 0) {
         const fallback = youEntries[0]
@@ -211,6 +220,7 @@ export async function getPlaceGalleryBuckets(
           userId: fallback.userId,
           alias: fallback.alias,
           aliasGenerated: fallback.aliasGenerated,
+          lastHooks: fallback.hooks ?? null,
         }
       }
     }
