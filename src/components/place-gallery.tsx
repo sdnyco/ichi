@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { EmblaEventType } from "embla-carousel"
 import { useRouter } from "next/navigation"
 
@@ -12,6 +12,7 @@ import {
   CarouselItem,
   useCarousel,
 } from "@/components/ui/carousel"
+import type { CarouselApi } from "@/components/ui/carousel"
 import type { PlaceGalleryBuckets, PlaceGalleryEntry } from "@/db/queries/places"
 import { t, type Locale } from "@/lib/i18n"
 import { formatDurationToken } from "@/lib/time"
@@ -29,6 +30,7 @@ type PlaceGalleryProps = {
 }
 
 const JUST_CHECKED_IN_TTL_MS = 90 * 1000
+let galleryDebugCounter = 0
 
 type GalleryItemKind = "self" | "active" | "anchored" | "placeholder"
   | "placeholder"
@@ -61,6 +63,11 @@ export function PlaceGallery({
   const [justCheckedInUntil, setJustCheckedInUntil] = useState<number | null>(null)
   const [isJustCheckedIn, setIsJustCheckedIn] = useState(false)
   const justCheckedInTimeoutRef = useRef<number | null>(null)
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null)
+
+  const handleCarouselApi = useCallback((api?: CarouselApi) => {
+    setCarouselApi(api ?? null)
+  }, [])
 
   useEffect(() => {
     if (!checkinVersion) return
@@ -94,6 +101,8 @@ export function PlaceGallery({
       }
     }
   }, [justCheckedInUntil])
+
+  useEffect(() => {}, [carouselApi])
 
   function handleCardClick(item: GalleryItem) {
     if (!item.userId) return
@@ -249,7 +258,8 @@ export function PlaceGallery({
       {hasEntries ? (
         <div className="-mx-6">
           <Carousel
-            opts={{ align: "center", containScroll: "trimSnaps" }}
+            opts={{ align: "center", containScroll: false }}
+            onApi={handleCarouselApi}
             className="w-full px-2 sm:px-4"
           >
             <CarouselContent className="py-4">

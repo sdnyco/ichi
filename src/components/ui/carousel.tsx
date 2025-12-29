@@ -17,6 +17,7 @@ type CarouselProps = React.HTMLAttributes<HTMLDivElement> & {
   opts?: CarouselOptions
   plugins?: CarouselPlugin[]
   orientation?: "horizontal" | "vertical"
+  onApi?: (api: CarouselApi | undefined) => void
 }
 
 type CarouselContextValue = {
@@ -43,6 +44,7 @@ export function Carousel({
   orientation = "horizontal",
   className,
   children,
+  onApi,
   ...props
 }: CarouselProps) {
   const [carouselRef, api] = useEmblaCarousel(
@@ -52,9 +54,12 @@ export function Carousel({
     },
     plugins,
   )
+  const viewportNodeRef = React.useRef<HTMLDivElement | null>(null)
 
   const [canScrollPrev, setCanScrollPrev] = React.useState(false)
   const [canScrollNext, setCanScrollNext] = React.useState(false)
+  // UX: prevent pre-init carousel flash (Embla applies transform after first paint)
+  const [isReady, setIsReady] = React.useState(false)
 
   const onSelect = React.useCallback((carouselApi?: CarouselApi) => {
     if (!carouselApi) return
@@ -73,6 +78,69 @@ export function Carousel({
     }
   }, [api, onSelect])
 
+  React.useEffect(() => {
+    if (!onApi) return
+    onApi(api)
+    return () => {
+      onApi(undefined)
+    }
+  }, [api, onApi])
+
+  // UX: prevent pre-init carousel flash (Embla applies transform after first paint)
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    if (isReady) return
+    let rafId: number | null = null
+    let frames = 0
+    const maxFrames = 20
+
+    const checkReady = () => {
+      const viewport = viewportNodeRef.current
+      if (!viewport) {
+        rafId = window.requestAnimationFrame(checkReady)
+        return
+      }
+      const track =
+        viewport.querySelector<HTMLElement>("[data-embla-container]") ??
+        (viewport.firstElementChild as HTMLElement | null)
+      if (!track) {
+        frames++
+        if (frames >= maxFrames) {
+          setIsReady(true)
+          return
+        }
+        rafId = window.requestAnimationFrame(checkReady)
+        return
+      }
+      const transform = window.getComputedStyle(track).transform
+      frames++
+      if ((transform && transform !== "none") || frames >= maxFrames) {
+        setIsReady(true)
+        return
+      }
+      rafId = window.requestAnimationFrame(checkReady)
+    }
+
+    rafId = window.requestAnimationFrame(checkReady)
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId)
+      }
+    }
+  }, [isReady])
+
+  React.useEffect(() => {
+    if (!api) return
+    const markReady = () => setIsReady(true)
+    markReady()
+    api.on("init", markReady)
+    api.on("reInit", markReady)
+    return () => {
+      api.off("init", markReady)
+      api.off("reInit", markReady)
+    }
+  }, [api])
+
   return (
     <CarouselContext.Provider
       value={{
@@ -83,12 +151,30 @@ export function Carousel({
         canScrollNext,
       }}
     >
-      <div ref={carouselRef} className={cn("overflow-hidden", className)} {...props}>
+      <div
+        ref={React.useCallback(
+          (node: HTMLDivElement | null) => {
+            viewportNodeRef.current = node
+            carouselRef(node)
+          },
+          [carouselRef],
+        )}
+        data-carousel-viewport=""
+        className={cn(
+          "overflow-hidden",
+          !isReady && "opacity-0 pointer-events-none",
+          isReady && "opacity-100",
+          className,
+        )}
+        {...props}
+      >
         {children}
       </div>
     </CarouselContext.Provider>
   )
 }
+
+export type { CarouselApi }
 
 export const CarouselContent = React.forwardRef<
   HTMLDivElement,
@@ -98,6 +184,7 @@ export const CarouselContent = React.forwardRef<
   return (
     <div
       ref={ref}
+      data-embla-container=""
       className={cn(
         "flex",
         orientation === "horizontal" ? "gap-4" : "flex-col gap-4",
