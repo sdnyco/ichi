@@ -8,8 +8,11 @@ import { ADMIN_COOKIE_NAME, validateAdminCookie } from "@/lib/admin-auth"
 const NAV_LINKS = [
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/places", label: "Places" },
   { href: "/admin/portals", label: "Portals" },
   { href: "/admin/check-ins", label: "Check-ins" },
+  { href: "/admin/metrics", label: "Metrics" },
+  { href: "/admin/errors", label: "Errors" },
 ]
 
 export default async function AdminLayout({

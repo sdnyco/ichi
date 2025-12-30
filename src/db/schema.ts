@@ -335,8 +335,18 @@ export const userReports = pgTable(
   }),
 )
 
+export const errorEvents = pgTable("error_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  source: text("source").notNull(),
+  route: text("route"),
+  message: text("message").notNull(),
+  detail: jsonb("detail"),
+})
+
 export type UserBlock = typeof userBlocks.$inferSelect
 export type UserReport = typeof userReports.$inferSelect
+export type ErrorEvent = typeof errorEvents.$inferSelect
 
 export type Place = typeof places.$inferSelect
 export type Portal = typeof portals.$inferSelect

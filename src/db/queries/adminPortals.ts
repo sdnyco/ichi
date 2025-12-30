@@ -16,6 +16,20 @@ export type AdminPortalRecord = {
   isEnabled: boolean
 }
 
+export class PortalCodeConflictError extends Error {
+  constructor(code: string) {
+    super(`Portal code already exists: ${code}`)
+    this.name = "PortalCodeConflictError"
+  }
+}
+
+export class PortalPlaceNotFoundError extends Error {
+  constructor(placeId: string) {
+    super(`Place not found: ${placeId}`)
+    this.name = "PortalPlaceNotFoundError"
+  }
+}
+
 export async function searchPortals({
   code,
   limit = 20,
@@ -47,5 +61,50 @@ export async function setPortalEnabled(portalId: string, isEnabled: boolean) {
     .update(portals)
     .set({ isEnabled })
     .where(eq(portals.id, portalId))
+}
+
+export async function createPortalRecord(params: {
+  code: string
+  placeId: string
+  isEnabled: boolean
+}) {
+  const normalizedCode = params.code.trim()
+  if (!normalizedCode) {
+    throw new Error("invalid_code")
+  }
+
+  const [place] = await db
+    .select({ id: places.id })
+    .from(places)
+    .where(eq(places.id, params.placeId))
+    .limit(1)
+
+  if (!place) {
+    throw new PortalPlaceNotFoundError(params.placeId)
+  }
+
+  const [existingPortal] = await db
+    .select({ id: portals.id })
+    .from(portals)
+    .where(eq(portals.code, normalizedCode))
+    .limit(1)
+
+  if (existingPortal) {
+    throw new PortalCodeConflictError(normalizedCode)
+  }
+
+  const [created] = await db
+    .insert(portals)
+    .values({
+      code: normalizedCode,
+      placeId: params.placeId,
+      isEnabled: params.isEnabled,
+    })
+    .returning({
+      id: portals.id,
+      code: portals.code,
+    })
+
+  return created
 }
 

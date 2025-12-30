@@ -12,6 +12,11 @@ const SECTIONS = [
     description: "Search users, review activity, and ban/unban accounts.",
   },
   {
+    href: "/admin/places",
+    title: "Places",
+    description: "Create places and inspect linked portals.",
+  },
+  {
     href: "/admin/portals",
     title: "Portals",
     description: "Toggle portal availability by code.",
@@ -20,6 +25,16 @@ const SECTIONS = [
     href: "/admin/check-ins",
     title: "Check-ins",
     description: "See active/expired check-ins and end sessions early.",
+  },
+  {
+    href: "/admin/metrics",
+    title: "Metrics",
+    description: "Track check-ins, pings, and errors at a glance.",
+  },
+  {
+    href: "/admin/errors",
+    title: "Errors",
+    description: "Review recent API/server exceptions.",
   },
 ]
 

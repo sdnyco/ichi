@@ -12,12 +12,18 @@ import {
   ensureUserNotBanned,
   touchUserLastSeen,
 } from "@/db/queries/users"
+import { logErrorEvent } from "@/db/queries/errorEvents"
 import {
   DURATION_MINUTES_SET,
   MAX_HINT_LENGTH,
   MOOD_ID_SET,
+  DURATION_OPTIONS,
+  MOOD_OPTIONS,
 } from "@/lib/checkins"
 import { getCheckinDurationDevOverrideMinutes } from "@/lib/dev-overrides"
+
+type DurationMinutes = (typeof DURATION_OPTIONS)[number]["minutes"]
+type MoodId = (typeof MOOD_OPTIONS)[number]["id"]
 
 type CheckInRequestBody = {
   userId: string
@@ -89,6 +95,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "account_disabled" }, { status: 403 })
     }
     console.error(error)
+    await logErrorEvent({
+      source: "api",
+      route: "/api/check-ins",
+      message: error instanceof Error ? error.message : "unknown_error",
+      detail: serializeErrorDetail(error),
+    })
     return NextResponse.json({ error: "unknown_error" }, { status: 500 })
   }
 }
@@ -102,11 +114,13 @@ function validatePayload(body: CheckInRequestBody) {
     return "invalid_place_id"
   }
 
-  if (!DURATION_MINUTES_SET.has(body.durationMinutes)) {
+  if (
+    !DURATION_MINUTES_SET.has(body.durationMinutes as DurationMinutes)
+  ) {
     return "invalid_duration"
   }
 
-  if (!MOOD_ID_SET.has(body.mood)) {
+  if (!MOOD_ID_SET.has(body.mood as MoodId)) {
     return "invalid_mood"
   }
 
@@ -122,5 +136,18 @@ function validatePayload(body: CheckInRequestBody) {
   }
 
   return null
+}
+
+function serializeErrorDetail(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      stack: error.stack,
+    }
+  }
+  if (typeof error === "string") {
+    return { value: error }
+  }
+  return undefined
 }
 

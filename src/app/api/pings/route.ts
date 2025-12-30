@@ -15,6 +15,7 @@ import {
   AccountDisabledError,
   ensureUserNotBanned,
 } from "@/db/queries/users"
+import { logErrorEvent } from "@/db/queries/errorEvents"
 import { arePingRateLimitsDisabled } from "@/lib/dev-overrides"
 import {
   getMaxRecipientsPerPingEvent,
@@ -152,6 +153,13 @@ export async function POST(request: Request) {
         .set({ status: "failed" })
         .where(eq(pingEvents.id, txResult.eventId))
 
+      await logErrorEvent({
+        source: "api",
+        route: "/api/pings",
+        message: error instanceof Error ? error.message : "ping_email_failed",
+        detail: serializeErrorDetail(error),
+      })
+
       return NextResponse.json({ ok: false, reason: "email_failed" }, { status: 500 })
     }
 
@@ -169,6 +177,12 @@ export async function POST(request: Request) {
     }
     console.error(error)
     logPingAction("error", { error: (error as Error)?.message })
+    await logErrorEvent({
+      source: "api",
+      route: "/api/pings",
+      message: error instanceof Error ? error.message : "unknown_error",
+      detail: serializeErrorDetail(error),
+    })
     return NextResponse.json({ ok: false, reason: "unknown_error" }, { status: 500 })
   }
 }
@@ -240,5 +254,18 @@ async function executePingTransaction(params: {
 
     return { type: "ok", eventId: event.id, recipients: confirmedRecipients }
   })
+}
+
+function serializeErrorDetail(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      stack: error.stack,
+    }
+  }
+  if (typeof error === "string") {
+    return { value: error }
+  }
+  return undefined
 }
 

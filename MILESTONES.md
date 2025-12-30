@@ -469,13 +469,13 @@ No hard CTAs required.
 
 ---
 
-## Pre-MVP Backlog (Non-Blocking)
-
-These items are **explicitly out of MVP scope**, but should be revisited and consciously decided on before launch. None of them block M5 or M6.
+## Pre-MVP Backlog
 
 ### Misc
 
 * [x] Fix the god-damn right-padding issue in the profile gallery
+
+* [ ] Fix "Alias + mood" profile card sentence
 
 * [ ] Introduce "local" vs. "traveler"
 
