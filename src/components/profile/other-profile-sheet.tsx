@@ -2,6 +2,7 @@
 
 import { startTransition, useEffect, useMemo, useState } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
+import { Flag } from "lucide-react"
 
 import { HOOK_LABEL_BY_ID } from "@/lib/hooks-catalog"
 import { formatDurationToken } from "@/lib/time"
@@ -155,7 +156,7 @@ export function OtherProfileSheet({
         Math.round((reference - new Date(data.lastSeenAt).getTime()) / 60000),
       )
       return t(locale, "profile.status.lastSeen", {
-        count: formatDurationToken(minutes),
+        count: formatLastSeenDuration(minutes),
       })
     }
 
@@ -263,9 +264,11 @@ export function OtherProfileSheet({
                   <button
                     type="button"
                     onClick={() => setIsMenuOpen((prev) => !prev)}
-                    className="rounded-full border border-white/20 px-3 py-1 text-sm font-medium text-white transition hover:border-white/60"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-white transition hover:border-white/60"
+                    aria-label={t(locale, "profile.safety.menu")}
                   >
-                    {t(locale, "profile.safety.menu")}
+                    <Flag className="h-4 w-4" aria-hidden />
+                    <span className="sr-only">{t(locale, "profile.safety.menu")}</span>
                   </button>
                   {isMenuOpen ? (
                     <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-white/10 bg-zinc-900 p-2 text-sm text-white shadow-lg">
@@ -469,6 +472,15 @@ export function OtherProfileSheet({
       </Dialog.Portal>
     </Dialog.Root>
   )
+}
+
+function formatLastSeenDuration(minutes: number) {
+  const minutesPerDay = 60 * 24
+  if (minutes >= minutesPerDay) {
+    const days = Math.floor(minutes / minutesPerDay)
+    return `${days}d`
+  }
+  return formatDurationToken(minutes)
 }
 
 const REPORT_REASONS = [

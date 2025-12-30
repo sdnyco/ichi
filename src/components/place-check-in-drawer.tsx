@@ -37,6 +37,7 @@ type PlaceCheckInDrawerProps = {
   locale: Locale
   onCheckinSuccess?: () => void
   initialAlias?: string
+  existingAlias?: string | null
 }
 
 type PlaceContextActiveCheckin = {
@@ -49,14 +50,15 @@ type PlaceContextResponse = {
   activeCheckin: PlaceContextActiveCheckin | null
 }
 
-const TOTAL_STEPS = 4
 const STEP_IDS = ["duration", "mood", "hint", "alias"] as const
+const STEP_IDS_WITHOUT_ALIAS = ["duration", "mood", "hint"] as const
 
 export function PlaceCheckInDrawer({
   placeId,
   locale,
   onCheckinSuccess,
   initialAlias,
+  existingAlias,
 }: PlaceCheckInDrawerProps) {
   const router = useRouter()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -66,7 +68,12 @@ export function PlaceCheckInDrawer({
   )
   const [mood, setMood] = useState<string>(MOOD_OPTIONS[0].id)
   const [recognizabilityHint, setRecognizabilityHint] = useState("")
-  const [alias, setAlias] = useState(() => initialAlias ?? generateAlias())
+  const persistedAlias =
+    existingAlias && existingAlias.trim().length > 0 ? existingAlias : null
+  const hasExistingPlaceAlias = Boolean(persistedAlias)
+  const [alias, setAlias] = useState(
+    () => persistedAlias ?? initialAlias ?? generateAlias(),
+  )
   const [error, setError] = useState<string | null>(null)
   const [accountDisabled, setAccountDisabled] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
@@ -84,9 +91,11 @@ export function PlaceCheckInDrawer({
   const resetFlow = useCallback(() => {
     setStepIndex(0)
     setRecognizabilityHint("")
-    setAlias(generateAlias())
+    setAlias(
+      hasExistingPlaceAlias ? persistedAlias! : initialAlias ?? generateAlias(),
+    )
     setError(null)
-  }, [])
+  }, [hasExistingPlaceAlias, initialAlias, persistedAlias])
 
   const refreshActiveCheckin = useCallback(async () => {
     if (!userId) return
@@ -139,14 +148,29 @@ export function PlaceCheckInDrawer({
         resetFlow()
       } else {
         setIsDrawerOpen(true)
+        setStepIndex(0)
         setError(null)
       }
     },
     [resetFlow],
   )
 
+  useEffect(() => {
+    if (persistedAlias) {
+      setAlias(persistedAlias)
+    }
+  }, [persistedAlias])
+
+  const stepIds = hasExistingPlaceAlias ? STEP_IDS_WITHOUT_ALIAS : STEP_IDS
+  const totalSteps = stepIds.length
+  const currentStepId = stepIds[stepIndex] ?? stepIds[0]
+
+  useEffect(() => {
+    setStepIndex((index) => Math.min(index, totalSteps - 1))
+  }, [totalSteps])
+
   function handleNextStep() {
-    setStepIndex((index) => Math.min(index + 1, TOTAL_STEPS - 1))
+    setStepIndex((index) => Math.min(index + 1, totalSteps - 1))
   }
 
   function handlePreviousStep() {
@@ -220,14 +244,13 @@ export function PlaceCheckInDrawer({
   }
 
   const isFirstStep = stepIndex === 0
-  const isFinalStep = stepIndex === TOTAL_STEPS - 1
-  const currentStepId = STEP_IDS[stepIndex]
+  const isFinalStep = stepIndex === totalSteps - 1
 
   const stepContent = (() => {
     if (currentStepId === "duration") {
       return (
         <StepLayout
-          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          stepLabel={`${stepIndex + 1} / ${totalSteps}`}
           title={t(locale, "checkin.duration.title")}
           legend={t(locale, "checkin.duration.description")}
         >
@@ -246,7 +269,7 @@ export function PlaceCheckInDrawer({
     if (currentStepId === "mood") {
       return (
         <StepLayout
-          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          stepLabel={`${stepIndex + 1} / ${totalSteps}`}
           title={t(locale, "checkin.mood.title")}
           legend={t(locale, "checkin.mood.description")}
         >
@@ -274,7 +297,7 @@ export function PlaceCheckInDrawer({
     if (currentStepId === "hint") {
       return (
         <StepLayout
-          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          stepLabel={`${stepIndex + 1} / ${totalSteps}`}
           title={t(locale, "checkin.hint.title")}
           legend={t(locale, "checkin.hint.description")}
         >
@@ -305,7 +328,7 @@ export function PlaceCheckInDrawer({
     if (currentStepId === "alias") {
       return (
         <StepLayout
-          stepLabel={`${stepIndex + 1} / ${TOTAL_STEPS}`}
+          stepLabel={`${stepIndex + 1} / ${totalSteps}`}
           title={t(locale, "checkin.alias.title")}
           legend={t(locale, "checkin.alias.description")}
         >

@@ -933,7 +933,7 @@ export function ExpandedProfileSheet({
                   {checkInMeta ? (
                     <div className="rounded-3xl border border-dashed border-white/20 bg-white/5 p-5">
                       <p className="text-sm text-zinc-100">
-                        {t(locale, "profile.checkin.status", checkInMeta)}
+                        {t(locale, "profile.checkin.statusSelf", checkInMeta)}
                       </p>
                     </div>
                   ) : null}

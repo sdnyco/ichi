@@ -36,6 +36,7 @@ export function PlacePageContent({
   const profileTriggerRef = useRef<HTMLButtonElement | null>(null)
   const [checkinVersion, setCheckinVersion] = useState(0)
   const viewerRefreshRequested = useRef(false)
+  const existingPlaceAlias = gallery.viewerProfile?.alias ?? null
   const handleCheckinSuccess = useCallback(() => {
     setCheckinVersion((version) => version + 1)
   }, [])
@@ -120,6 +121,7 @@ export function PlacePageContent({
         locale={locale}
         onCheckinSuccess={handleCheckinSuccess}
         initialAlias={initialDrawerAlias}
+        existingAlias={existingPlaceAlias}
       />
     </div>
   )
