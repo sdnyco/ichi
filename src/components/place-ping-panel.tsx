@@ -106,17 +106,38 @@ export function PlacePingPanel({
         : "border-amber-200 bg-amber-50 text-amber-800"
   const pingCtaDisabled = isSendingPing || isPingEligibilityLoading
 
+  const activeCheckinRequestKeyRef = useRef<string | null>(null)
+  const activeCheckinAbortRef = useRef<AbortController | null>(null)
+
   const refreshActiveCheckin = useCallback(async () => {
     if (!userId) return
+    const requestKey = `${placeId}:${userId}`
+    if (activeCheckinRequestKeyRef.current === requestKey) {
+      return
+    }
+    activeCheckinRequestKeyRef.current = requestKey
+    activeCheckinAbortRef.current?.abort()
+    const controller = new AbortController()
+    activeCheckinAbortRef.current = controller
+
     try {
       const params = new URLSearchParams({ placeId, userId })
-      const response = await fetch(`/api/me/place-context?${params.toString()}`)
+      const response = await fetch(`/api/me/place-context?${params.toString()}`, {
+        signal: controller.signal,
+      })
       if (!response.ok) {
+        const snippet = await response.text().catch(() => "")
+        if (process.env.NODE_ENV !== "production") {
+          console.error("place_context_failed", response.status, snippet.slice(0, 200))
+        }
         throw new Error("place_context_failed")
       }
       const data = (await response.json()) as PlaceContextResponse
       setActiveCheckin(data.activeCheckin)
     } catch (error) {
+      if ((error as DOMException)?.name === "AbortError") {
+        return
+      }
       console.error(error)
     }
   }, [placeId, userId])
@@ -166,6 +187,10 @@ export function PlacePingPanel({
 
   useEffect(() => {
     void refreshActiveCheckin()
+    return () => {
+      activeCheckinRequestKeyRef.current = null
+      activeCheckinAbortRef.current?.abort()
+    }
   }, [refreshActiveCheckin, checkinVersion])
 
   useEffect(() => {

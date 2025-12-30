@@ -23,6 +23,7 @@ type OtherProfileSheetProps = {
 type ProfileResponse = {
   profile: {
     alias: string
+    lastHooks: string[] | null
   }
   userTraits: {
     ageBand: string | null
@@ -35,7 +36,8 @@ type ProfileResponse = {
     recognizabilityHint: string | null
     startedAt: string
     expiresAt: string
-  }
+  } | null
+  lastSeenAt: string | null
   isBlockedByViewer: boolean
 }
 
@@ -94,50 +96,82 @@ export function OtherProfileSheet({
     }
   }, [data, open])
 
+  const activeCheckin = data?.activeCheckin ?? null
+  const hasActiveCheckin = Boolean(activeCheckin)
+
   const moodLabel = useMemo(() => {
-    if (!data?.activeCheckin?.mood) return null
-    const option = MOOD_OPTIONS.find(
-      (option) => option.id === data.activeCheckin.mood,
+    if (!activeCheckin?.mood) return null
+    const option = MOOD_OPTIONS.find((option) => option.id === activeCheckin.mood)
+    return option ? t(locale, option.labelKey) : activeCheckin.mood
+  }, [activeCheckin?.mood, locale])
+
+  const isViewingSelf =
+    Boolean(targetUserId) && Boolean(viewerUserId)
+      ? targetUserId === viewerUserId
+      : false
+
+  const hookSource =
+    (hasActiveCheckin ? activeCheckin?.hooks : data?.profile?.lastHooks) ?? []
+  const hookLabels = hookSource
+    .filter((hook): hook is string => Boolean(hook && hook.trim()))
+    .slice(0, 3)
+    .map((hook) =>
+      HOOK_LABEL_BY_ID[hook] ? t(locale, HOOK_LABEL_BY_ID[hook]) : hook,
     )
-    return option ? t(locale, option.labelKey) : data.activeCheckin.mood
-  }, [data, locale])
 
-  const hookList = (data?.activeCheckin?.hooks as string[] | null) ?? []
-  const hookLabels = hookList.map((hook) =>
-    HOOK_LABEL_BY_ID[hook]
-      ? t(locale, HOOK_LABEL_BY_ID[hook])
-      : hook,
-  )
+  let startedMinutes = 0
+  let remainingMinutes = 0
+  if (hasActiveCheckin && activeCheckin && timestamp) {
+    startedMinutes = Math.max(
+      0,
+      Math.round((timestamp - new Date(activeCheckin.startedAt).getTime()) / 60000),
+    )
+    remainingMinutes = Math.max(
+      0,
+      Math.round((new Date(activeCheckin.expiresAt).getTime() - timestamp) / 60000),
+    )
+  }
 
-  const startedMinutes =
-    data && timestamp
-    ? Math.max(
-        0,
-        Math.round(
-            (timestamp - new Date(data.activeCheckin.startedAt).getTime()) /
-            60000,
-        ),
+  const statusText = useMemo(() => {
+    if (!data || isLoading || error) {
+      return null
+    }
+    if (hasActiveCheckin && activeCheckin) {
+      return t(
+        locale,
+        isViewingSelf ? "profile.checkin.statusSelf" : "profile.checkin.statusOther",
+        {
+        place: placeName,
+        agoFormatted: formatDurationToken(startedMinutes),
+        remainingFormatted: formatDurationToken(remainingMinutes),
+        },
       )
-      : 0
-  const remainingMinutes =
-    data && timestamp
-    ? Math.max(
-        0,
-        Math.round(
-            (new Date(data.activeCheckin.expiresAt).getTime() - timestamp) /
-            60000,
-        ),
-      )
-    : 0
+    }
 
-  const statusText =
-    data && !isLoading && !error
-      ? t(locale, "profile.checkin.status", {
-          place: placeName,
-          agoFormatted: formatDurationToken(startedMinutes),
-          remainingFormatted: formatDurationToken(remainingMinutes),
-        })
-      : null
+    if (data.lastSeenAt) {
+      const reference = timestamp || Date.now()
+      const minutes = Math.max(
+        0,
+        Math.round((reference - new Date(data.lastSeenAt).getTime()) / 60000),
+      )
+      return t(locale, "profile.status.lastSeen", {
+        count: formatDurationToken(minutes),
+      })
+    }
+
+    return t(locale, "profile.status.notActive")
+  }, [
+    activeCheckin,
+    data,
+    error,
+    hasActiveCheckin,
+    isLoading,
+    locale,
+    placeName,
+    remainingMinutes,
+    startedMinutes,
+    timestamp,
+  ])
   const isBlocked = data?.isBlockedByViewer ?? false
 
   async function handleBlockToggle() {
@@ -290,31 +324,35 @@ export function OtherProfileSheet({
                     </div>
 
                     <section className="space-y-6">
-                      <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-wide text-zinc-400">
-                          {t(locale, "profile.mood.label")}
-                        </p>
-                        <h2 className="text-2xl font-semibold text-white">
-                          {t(locale, "profile.mood.title")}
-                        </h2>
-                        <p className="text-lg text-zinc-200">
-                          {moodLabel ?? t(locale, "profile.readonly.noData")}
-                        </p>
-                      </div>
+                      {hasActiveCheckin ? (
+                        <>
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-zinc-400">
+                              {t(locale, "profile.mood.label")}
+                            </p>
+                            <h2 className="text-2xl font-semibold text-white">
+                              {t(locale, "profile.mood.title")}
+                            </h2>
+                            <p className="text-lg text-zinc-200">
+                              {moodLabel ?? t(locale, "profile.readonly.noData")}
+                            </p>
+                          </div>
 
-                      <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-wide text-zinc-400">
-                          {t(locale, "profile.recognizability.label")}
-                        </p>
-                        <h2 className="text-2xl font-semibold text-white">
-                          {t(locale, "profile.recognizability.title")}
-                        </h2>
-                        <p className="rounded-3xl border border-white/10 bg-white/5 p-4 text-zinc-100">
-                          {data.activeCheckin.recognizabilityHint
-                            ? data.activeCheckin.recognizabilityHint
-                            : t(locale, "profile.readonly.noHint")}
-                        </p>
-                      </div>
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-zinc-400">
+                              {t(locale, "profile.recognizability.label")}
+                            </p>
+                            <h2 className="text-2xl font-semibold text-white">
+                              {t(locale, "profile.recognizability.title")}
+                            </h2>
+                            <p className="rounded-3xl border border-white/10 bg-white/5 p-4 text-zinc-100">
+                              {activeCheckin?.recognizabilityHint
+                                ? activeCheckin.recognizabilityHint
+                                : t(locale, "profile.readonly.noHint")}
+                            </p>
+                          </div>
+                        </>
+                      ) : null}
 
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-wide text-zinc-400">
@@ -329,9 +367,9 @@ export function OtherProfileSheet({
                           </p>
                         ) : (
                           <div className="flex flex-wrap gap-2">
-                          {hookLabels.map((hook, index) => (
+                            {hookLabels.map((hook, index) => (
                               <span
-                              key={`${hook}-${index}`}
+                                key={`${hook}-${index}`}
                                 className="rounded-full border border-white/20 px-4 py-1 text-sm text-white"
                               >
                                 {hook}

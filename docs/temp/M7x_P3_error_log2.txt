@@ -1,0 +1,42 @@
+⨯ TypeError: Cannot read properties of undefined (reading 'keyAsName')
+    at getOrCreatePlaceProfile (src/db/queries/checkins.ts:25:6)
+    at GET (src/app/api/me/place-context/route.ts:46:48)
+  23 |       aliasGenerated: true,
+  24 |     })
+> 25 |     .onConflictDoUpdate({
+     |      ^
+  26 |       target: placeProfiles.userPlaceUnique,
+  27 |       set: {
+  28 |         updatedAt: new Date(),
+⨯ TypeError: Cannot read properties of undefined (reading 'keyAsName')
+    at getOrCreatePlaceProfile (src/db/queries/checkins.ts:25:6)
+    at GET (src/app/api/me/place-context/route.ts:46:48)
+  23 |       aliasGenerated: true,
+  24 |     })
+> 25 |     .onConflictDoUpdate({
+     |      ^
+  26 |       target: placeProfiles.userPlaceUnique,
+  27 |       set: {
+  28 |         updatedAt: new Date(),
+ GET /api/me/place-context?placeId=c0083b63-af31-48ad-a39b-08dab528d198&userId=e6dde787-9cf0-4463-8f4d-3a0550df1189 500 in 171ms (compile: 1681µs, render: 169ms)
+⨯ TypeError: Cannot read properties of undefined (reading 'keyAsName')
+    at getOrCreatePlaceProfile (src/db/queries/checkins.ts:25:6)
+    at GET (src/app/api/me/place-context/route.ts:46:48)
+  23 |       aliasGenerated: true,
+  24 |     })
+> 25 |     .onConflictDoUpdate({
+     |      ^
+  26 |       target: placeProfiles.userPlaceUnique,
+  27 |       set: {
+  28 |         updatedAt: new Date(),
+⨯ TypeError: Cannot read properties of undefined (reading 'keyAsName')
+    at getOrCreatePlaceProfile (src/db/queries/checkins.ts:25:6)
+    at GET (src/app/api/me/place-context/route.ts:46:48)
+  23 |       aliasGenerated: true,
+  24 |     })
+> 25 |     .onConflictDoUpdate({
+     |      ^
+  26 |       target: placeProfiles.userPlaceUnique,
+  27 |       set: {
+  28 |         updatedAt: new Date(),
+ GET /api/me/place-context?placeId=c0083b63-af31-48ad-a39b-08dab528d198&userId=e6dde787-9cf0-4463-8f4d-3a0550df1189 500 in 376ms (compile: 1992µs, render: 374ms)

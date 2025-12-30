@@ -12,18 +12,9 @@ export async function getOrCreateUserId(userId: string) {
 }
 
 export async function getOrCreatePlaceProfile(userId: string, placeId: string) {
-  const existing = await db.query.placeProfiles.findFirst({
-    where: (profiles, { and: whereAnd }) =>
-      whereAnd(eq(profiles.userId, userId), eq(profiles.placeId, placeId)),
-  })
-
-  if (existing) {
-    return existing
-  }
-
   const alias = generateAlias()
 
-  const [created] = await db
+  const [record] = await db
     .insert(placeProfiles)
     .values({
       userId,
@@ -31,9 +22,15 @@ export async function getOrCreatePlaceProfile(userId: string, placeId: string) {
       alias,
       aliasGenerated: true,
     })
+    .onConflictDoUpdate({
+      target: [placeProfiles.userId, placeProfiles.placeId],
+      set: {
+        updatedAt: new Date(),
+      },
+    })
     .returning()
 
-  return created
+  return record
 }
 
 export async function updatePlaceProfileAlias(

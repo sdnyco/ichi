@@ -396,20 +396,22 @@ export function PlaceCheckInDrawer({
         </DrawerContent>
       </Drawer>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-6 pb-6 pt-4">
-        <div className="pointer-events-auto rounded-3xl border border-zinc-200 bg-white/90 p-4 shadow-lg backdrop-blur">
-          <Button
-            type="button"
-            className="pointer-events-auto w-full"
-            onClick={() => handleDrawerOpenChange(true)}
-            disabled={drawerCtaDisabled}
-          >
-            {hasActiveCheckin
-              ? t(locale, "checkin.status.blocked")
-              : accountDisabled
-                ? t(locale, "checkin.status.disabled")
-                : "Check In →"}
-          </Button>
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-6 pt-4 sm:px-6">
+        <div className="pointer-events-auto mx-auto w-full max-w-2xl">
+          <div className="rounded-3xl border border-zinc-200 bg-white/90 p-4 shadow-lg backdrop-blur">
+            <Button
+              type="button"
+              className="pointer-events-auto w-full"
+              onClick={() => handleDrawerOpenChange(true)}
+              disabled={drawerCtaDisabled}
+            >
+              {hasActiveCheckin
+                ? t(locale, "checkin.status.blocked")
+                : accountDisabled
+                  ? t(locale, "checkin.status.disabled")
+                  : "Check In →"}
+            </Button>
+          </div>
         </div>
       </div>
     </>

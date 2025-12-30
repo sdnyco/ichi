@@ -8,6 +8,7 @@ import {
   places,
   userBlocks,
   userTraits,
+  users,
 } from "@/db/schema"
 
 export async function GET(request: Request) {
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
 
   const now = new Date()
 
-  const rows = await db
+  const activeRows = await db
     .select({
       place: {
         id: places.id,
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
       profile: {
         alias: placeProfiles.alias,
         aliasGenerated: placeProfiles.aliasGenerated,
+        lastHooks: placeProfiles.lastHooks,
       },
       checkIn: {
         id: checkIns.id,
@@ -44,6 +46,7 @@ export async function GET(request: Request) {
         ageBand: userTraits.ageBand,
         heightCm: userTraits.heightCm,
       },
+      lastSeenAt: users.lastSeenAt,
       isBlocked:
         viewerUserId != null
           ? sql<boolean>`EXISTS (
@@ -63,6 +66,7 @@ export async function GET(request: Request) {
       ),
     )
     .leftJoin(userTraits, eq(userTraits.userId, checkIns.userId))
+    .leftJoin(users, eq(users.id, checkIns.userId))
     .where(
       and(
         eq(checkIns.placeId, placeId),
@@ -72,18 +76,68 @@ export async function GET(request: Request) {
     )
     .limit(1)
 
-  if (rows.length === 0) {
+  if (activeRows.length > 0) {
+    const row = activeRows[0]
+    return NextResponse.json({
+      place: row.place,
+      profile: row.profile,
+      userTraits: row.traits,
+      activeCheckin: row.checkIn,
+      lastSeenAt: row.lastSeenAt,
+      isBlockedByViewer: row.isBlocked,
+    })
+  }
+
+  const fallbackRows = await db
+    .select({
+      place: {
+        id: places.id,
+        name: places.name,
+      },
+      profile: {
+        alias: placeProfiles.alias,
+        aliasGenerated: placeProfiles.aliasGenerated,
+        lastHooks: placeProfiles.lastHooks,
+      },
+      traits: {
+        ageBand: userTraits.ageBand,
+        heightCm: userTraits.heightCm,
+      },
+      lastSeenAt: users.lastSeenAt,
+      isBlocked:
+        viewerUserId != null
+          ? sql<boolean>`EXISTS (
+              SELECT 1 FROM ${userBlocks} AS ub
+              WHERE ub.blocker_user_id = ${viewerUserId}
+              AND ub.blocked_user_id = ${targetUserId}
+            )`
+          : sql<boolean>`false`,
+    })
+    .from(placeProfiles)
+    .innerJoin(places, eq(places.id, placeProfiles.placeId))
+    .leftJoin(userTraits, eq(userTraits.userId, placeProfiles.userId))
+    .leftJoin(users, eq(users.id, placeProfiles.userId))
+    .where(
+      and(
+        eq(placeProfiles.placeId, placeId),
+        eq(placeProfiles.userId, targetUserId),
+      ),
+    )
+    .limit(1)
+
+  if (fallbackRows.length === 0) {
     return NextResponse.json({ error: "not_found" }, { status: 404 })
   }
 
-  const row = rows[0]
+  const fallback = fallbackRows[0]
 
   return NextResponse.json({
-    place: row.place,
-    profile: row.profile,
-    userTraits: row.traits,
-    activeCheckin: row.checkIn,
-    isBlockedByViewer: row.isBlocked,
+    place: fallback.place,
+    profile: fallback.profile,
+    userTraits: fallback.traits,
+    activeCheckin: null,
+    lastSeenAt: fallback.lastSeenAt,
+    isBlockedByViewer: fallback.isBlocked,
   })
 }
 

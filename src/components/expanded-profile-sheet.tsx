@@ -931,18 +931,10 @@ export function ExpandedProfileSheet({
                     </p>
                   ) : null}
                   {checkInMeta ? (
-                    <div className="space-y-3 rounded-3xl border border-dashed border-white/20 bg-white/5 p-5">
+                    <div className="rounded-3xl border border-dashed border-white/20 bg-white/5 p-5">
                       <p className="text-sm text-zinc-100">
                         {t(locale, "profile.checkin.status", checkInMeta)}
                       </p>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Button variant="secondary" size="sm" disabled>
-                          {t(locale, "profile.checkin.checkout")}
-                        </Button>
-                        <span className="text-xs text-zinc-400">
-                          {t(locale, "profile.checkin.comingSoon")}
-                        </span>
-                      </div>
                     </div>
                   ) : null}
                 </div>

@@ -280,7 +280,7 @@ export function PlaceGallery({
               {galleryItems.map((item) => (
                 <CarouselItem
                   key={item.key}
-                  className="basis-[85%] sm:basis-[60%] md:basis-[45%] lg:basis-[35%] xl:basis-[28%] max-w-sm"
+                  className="basis-[85%] sm:basis-[60%] md:basis-[55%] lg:basis-[50%] xl:basis-[45%] 2xl:basis-[40%] max-w-md lg:max-w-xl"
                 >
                   <GalleryCard
                     item={item}

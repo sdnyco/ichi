@@ -477,6 +477,10 @@ No hard CTAs required.
 
 * [ ] Fix "Alias + mood" profile card sentence
 
+* [ ] Fix "Last Seen" time formatting on profile card
+
+* [ ] Remove Alias-regeneration when checking in AGAIN after having had a successful check-in before (over-writes existing alias for now reason)
+
 * [ ] Introduce "local" vs. "traveler"
 
 * [ ] Show "lastHooks" from expired check-in for anchored users

@@ -1,0 +1,42 @@
+⨯ Error: Failed query: insert into "place_profiles" ("id", "user_id", "place_id", "alias", "alias_generated", "is_anchored", "last_hooks", "is_availability_enabled", "availability_time_zone", "availability_weekly", "contact_email", "created_at", "updated_at") values (default, $1, $2, $3, $4, default, default, default, default, default, default, default, default) returning "id", "user_id", "place_id", "alias", "alias_generated", "is_anchored", "last_hooks", "is_availability_enabled", "availability_time_zone", "availability_weekly", "contact_email", "created_at", "updated_at"
+params: c7422317-51ed-4194-8e50-6134f14c2c89,c0083b63-af31-48ad-a39b-08dab528d198,Phantom Teal Cipher,true
+    at async getOrCreatePlaceProfile (src/db/queries/checkins.ts:26:21)
+    at async GET (src/app/api/me/place-context/route.ts:46:19)
+  24 |   const alias = generateAlias()
+  25 |
+> 26 |   const [created] = await db
+     |                     ^
+  27 |     .insert(placeProfiles)
+  28 |     .values({
+  29 |       userId, {
+  query: 'insert into "place_profiles" ("id", "user_id", "place_id", "alias", "alias_generated", "is_anchored", "last_hooks", "is_availability_enabled", "availability_time_zone", "availability_weekly", "contact_email", "created_at", "updated_at") values (default, $1, $2, $3, $4, default, default, default, default, default, default, default, default) returning "id", "user_id", "place_id", "alias", "alias_generated", "is_anchored", "last_hooks", "is_availability_enabled", "availability_time_zone", "availability_weekly", "contact_email", "created_at", "updated_at"',
+  params: [Array],
+  [cause]: error: duplicate key value violates unique constraint "place_profiles_user_place_unique"
+      at async getOrCreatePlaceProfile (src/db/queries/checkins.ts:26:21)
+      at async GET (src/app/api/me/place-context/route.ts:46:19)
+    24 |   const alias = generateAlias()
+    25 |
+  > 26 |   const [created] = await db
+       |                     ^
+    27 |     .insert(placeProfiles)
+    28 |     .values({
+    29 |       userId, {
+    length: 321,
+    severity: 'ERROR',
+    code: '23505',
+    detail: 'Key (user_id, place_id)=(c7422317-51ed-4194-8e50-6134f14c2c89, c0083b63-af31-48ad-a39b-08dab528d198) already exists.',
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: 'public',
+    table: 'place_profiles',
+    column: undefined,
+    dataType: undefined,
+    constraint: 'place_profiles_user_place_unique',
+    file: 'nbtinsert.c',
+    line: '666',
+    routine: '_bt_check_unique'
+  }
+}
