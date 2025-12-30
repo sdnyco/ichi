@@ -351,16 +351,19 @@ function GalleryCard({
   }
 
   const pill = getCardStatusPill(item, referenceNow)
-  const hookIds =
-    item.kind === "anchored"
-      ? []
-      : (item.hooks ?? [])
-          .filter((hook): hook is string => Boolean(hook && hook.trim()))
-          .slice(0, 3)
-  const hookLabels = hookIds.map((hookId) => {
-    const labelKey = HOOK_LABEL_BY_ID[hookId]
-    return labelKey ? t(locale, labelKey) : hookId
-  })
+  const hookIds = useMemo(() => {
+    if (item.kind === "anchored") return []
+    return (item.hooks ?? [])
+      .filter((hook): hook is string => Boolean(hook && hook.trim()))
+      .slice(0, 3)
+  }, [item.hooks, item.kind])
+
+  const hookLabels = useMemo(() => {
+    return hookIds.map((hookId) => {
+      const labelKey = HOOK_LABEL_BY_ID[hookId]
+      return labelKey ? t(locale, labelKey) : hookId
+    })
+  }, [hookIds, locale])
   const showHooks = hookLabels.length > 0 && (isSelf || isActive)
   const showIncompleteNotice = isSelf && hookIds.length === 0
   const hookLabel = isSelf ? "What you're up for:" : "What they are up for:"
@@ -401,14 +404,9 @@ function GalleryCard({
             <div className="space-y-3">
               <p className="text-xs uppercase tracking-wide text-neutral-400">{hookLabel}</p>
               <div className="space-y-2">
-                {hookLabels.map((hook, index) => (
-                  <div
-                    key={`${hook}-${index}`}
-                    className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-neutral-50"
-                  >
-                    {hook}
-                  </div>
-                ))}
+                <div className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-neutral-50">
+                  <HookTickerList items={hookLabels} />
+                </div>
               </div>
             </div>
           ) : null}
@@ -484,6 +482,193 @@ function formatCompactDuration(referenceNow: Date, target?: Date | null) {
   }
 
   return `${minutes}m`
+}
+
+const HOOK_TICKER_INTERVAL_MS = 3000
+const HOOK_TICKER_DURATION_MS = 520
+
+function HookTickerList({ items }: { items: string[] }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const [index, setIndex] = useState(0)
+  const [cycleKey, setCycleKey] = useState(0)
+
+  const itemsKey = useMemo(() => items.join("||"), [items])
+
+  useEffect(() => {
+    setIndex(0)
+    setCycleKey((key) => key + 1)
+  }, [itemsKey])
+
+  useEffect(() => {
+    if (items.length < 2 || prefersReducedMotion) {
+      return
+    }
+
+    const total = items.length
+    const intervalId = window.setInterval(() => {
+      setIndex((prev) => {
+        const nextIndex = (prev + 1) % total
+        setCycleKey((key) => key + 1)
+        return nextIndex
+      })
+    }, HOOK_TICKER_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [items.length, itemsKey, prefersReducedMotion])
+
+  if (items.length === 0) {
+    return null
+  }
+
+  const currentText = items[index] ?? ""
+  const disableTicker = prefersReducedMotion || items.length < 2
+
+  return (
+    <HookTicker
+      text={currentText}
+      cycleKey={cycleKey}
+      durationMs={HOOK_TICKER_DURATION_MS}
+      disabled={disableTicker}
+    />
+  )
+}
+
+type HookTickerProps = {
+  text: string
+  cycleKey: number
+  durationMs?: number
+  disabled?: boolean
+}
+
+function HookTicker({
+  text,
+  cycleKey,
+  durationMs = HOOK_TICKER_DURATION_MS,
+  disabled = false,
+}: HookTickerProps) {
+  const [currentText, setCurrentText] = useState(text)
+  const [outgoingText, setOutgoingText] = useState<string | null>(null)
+  const [incomingText, setIncomingText] = useState<string | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+
+  const activeKeyRef = useRef(cycleKey)
+  const timeoutRef = useRef<number | null>(null)
+  const frameRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current)
+      }
+      if (frameRef.current) {
+        window.cancelAnimationFrame(frameRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (disabled) {
+      activeKeyRef.current = cycleKey
+      setCurrentText(text)
+      setOutgoingText(null)
+      setIncomingText(null)
+      setIsRunning(false)
+      return
+    }
+
+    if (cycleKey === activeKeyRef.current) {
+      if (!isRunning && currentText !== text) {
+        setCurrentText(text)
+      }
+      return
+    }
+
+    activeKeyRef.current = cycleKey
+
+    if (text === currentText) {
+      return
+    }
+
+    setOutgoingText(currentText)
+    setIncomingText(text)
+    setIsRunning(false)
+
+    if (frameRef.current) {
+      window.cancelAnimationFrame(frameRef.current)
+    }
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = window.requestAnimationFrame(() => {
+        setIsRunning(true)
+      })
+    })
+
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current)
+    }
+    timeoutRef.current = window.setTimeout(() => {
+      setCurrentText(text)
+      setOutgoingText(null)
+      setIncomingText(null)
+      setIsRunning(false)
+    }, durationMs)
+  }, [cycleKey, currentText, disabled, durationMs, isRunning, text])
+
+  if (!outgoingText && !incomingText) {
+    return (
+      <div className="relative h-6 overflow-hidden leading-6" aria-live="polite">
+        <span className="block truncate">{currentText}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative h-6 overflow-hidden leading-6" aria-live="polite">
+      <span
+        className={cn(
+          "absolute inset-0 block truncate will-change-transform",
+          isRunning &&
+            "transition-transform duration-[520ms] ease-[cubic-bezier(0.22,0.61,0.36,1)]",
+          isRunning ? "-translate-y-full" : "translate-y-0",
+        )}
+      >
+        {outgoingText ?? currentText}
+      </span>
+      <span
+        className={cn(
+          "absolute inset-0 block truncate will-change-transform",
+          isRunning &&
+            "transition-transform duration-[520ms] ease-[cubic-bezier(0.22,0.61,0.36,1)]",
+          isRunning ? "translate-y-0" : "translate-y-full",
+        )}
+        aria-hidden={!isRunning}
+      >
+        {incomingText ?? text}
+      </span>
+    </div>
+  )
+}
+
+function usePrefersReducedMotion() {
+  const [prefers, setPrefers] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const handleChange = (event: MediaQueryListEvent) => {
+      setPrefers(event.matches)
+    }
+    setPrefers(mediaQuery.matches)
+    mediaQuery.addEventListener("change", handleChange)
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange)
+    }
+  }, [])
+
+  return prefers
 }
 
 const AUTO_SCROLL_DELAY_MS = 2200

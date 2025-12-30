@@ -42,7 +42,7 @@ export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
             name="token"
             required
             autoFocus
-            className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-white focus:outline-none"
+            className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-white focus:outline-none mb-4"
             placeholder="••••••••"
           />
         </label>

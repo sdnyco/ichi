@@ -250,37 +250,99 @@ Enable latent reachability: anchored users can be pinged when a place is empty.
 
 ---
 
-### M7 — Deployability & Place Ops
+Perfect. Below is a **drop-in, `MILESTONES.md`-friendly** version you can paste as-is.
+I’ve kept it crisp, operational, and acceptance-driven — no aspirational fluff, no premature hardening.
 
-**Intent**
-Make it operationally deployable across multiple real places.
+---
 
-**Scope**
+## M7 — Admin Operations & Production Readiness
 
-* Place + portal management flow (admin)
-* Seed/creation tooling for places and portals
-* Basic analytics/logging for:
+### M7a — Admin Operations & Observability (Pre-Launch)
 
-  * check-ins created
-  * pings sent
-  * errors
-* Production hardening:
+**Goal:**
+Enable operating ichi without touching the database, and gain basic visibility into real usage and failures.
 
-  * env validation
-  * error boundaries
-  * basic performance hygiene
+#### Scope
 
-**Definition of Done**
+**Admin: Place & Portal Management**
 
-* Multiple places can be configured and used without code changes
-* Portals can be activated/disabled safely
-* App is deployable and stable enough for live pilot use
+* View list of portals with status (enabled/disabled) and basic metadata
+* Create new portals via admin UI
+* Create new places via admin UI
+* Associate portals with places
+* Enable / disable portals from admin UI
+* View portal → place relationship in admin
 
-**Explicitly Not Included**
+**Admin: Seed / Creation Tooling**
 
-* Full analytics suite
-* A/B testing
-* Deep metrics dashboards
+* Manual creation flows only (no bulk import, no CLI)
+* Explicit forms with validation for:
+
+  * Place creation
+  * Portal creation
+* No geofencing, maps, or advanced location logic
+
+**Admin: Basic Analytics / Logging**
+
+* Record events for:
+
+  * Check-ins created
+  * Pings sent
+  * Errors (API + client)
+* Store events in first-party storage (DB or log table)
+* Admin UI provides:
+
+  * Aggregate counts (total / last 24h)
+  * Recent event timestamps
+* No alerting, dashboards, or external services
+
+#### Acceptance Criteria
+
+* A new place and portal can be created entirely via the admin UI
+* A portal can be enabled/disabled without code or DB access
+* Admin can answer:
+
+  * “Are people checking in?”
+  * “Are pings being sent?”
+  * “Are errors occurring?”
+* Analytics are append-only and do not affect core user flows
+* No production hardening assumptions baked in
+
+---
+
+### M7b — Production Hardening (Final Pre-Launch)
+
+**Goal:**
+Make the system safe, predictable, and debuggable in production.
+
+#### Scope
+
+**Environment Validation**
+
+* Explicit validation of required environment variables at startup
+* Clear error messages for missing / invalid configuration
+
+**Error Boundaries**
+
+* Application-level error boundaries for:
+
+  * Core user flows
+  * Admin routes
+* Graceful fallback UI for unexpected failures
+
+**Performance Hygiene**
+
+* Remove obvious render / fetch inefficiencies
+* Avoid unnecessary recomputation in hot paths
+* Ensure no debug logging runs in production builds
+
+#### Acceptance Criteria
+
+* App fails fast and clearly on invalid environment configuration
+* User-facing errors do not crash the entire app
+* Admin UI remains usable under partial failures
+* No known performance foot-guns remain in core flows
+* System is ready for first public deployment
 
 ---
 

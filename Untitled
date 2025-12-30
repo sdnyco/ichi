@@ -1,0 +1,9 @@
+M7a — Admin Operations & Observability
+- Place + portal management (admin)
+- Seed / creation tooling
+- Basic analytics & logging (check-ins, pings, errors)
+
+M7b — Production Hardening
+- Env validation
+- Error boundaries
+- Performance hygiene
