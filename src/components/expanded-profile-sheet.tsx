@@ -194,15 +194,14 @@ export function ExpandedProfileSheet({
     setMoodValue(data.activeCheckin?.mood ?? MOOD_OPTIONS[0].id)
     setHintValue(data.activeCheckin?.recognizabilityHint ?? "")
 
+    const fallbackHooks = data.placeProfile?.lastHooks ?? []
     if (data.activeCheckin) {
-      const hooks =
-        data.activeCheckin.hooks ?? data.placeProfile?.lastHooks ?? []
+      const hooks = data.activeCheckin.hooks ?? fallbackHooks
       setHooksValue(hooks)
-      setHasSeededHooks(true)
     } else {
-      setHooksValue([])
-      setHasSeededHooks(false)
+      setHooksValue(fallbackHooks)
     }
+    setHasSeededHooks(true)
 
     lastAgeSubmitted.current = null
     lastHeightSubmitted.current = null
@@ -671,53 +670,89 @@ export function ExpandedProfileSheet({
   }, [activeCheckin, hintValue, placeId, sendPatch, userId])
 
   useEffect(() => {
-    if (!activeCheckin) return
     if (!userId) return
+    if (accountDisabled) return
     if (!hasSeededHooks) return
-    const serverHooks = activeCheckin.hooks ?? []
+
+    const serverHooks = activeCheckin
+      ? activeCheckin.hooks ?? []
+      : context?.placeProfile?.lastHooks ?? []
     if (JSON.stringify(serverHooks) === JSON.stringify(hooksValue)) return
+
     const hookSignature = JSON.stringify(hooksValue)
     if (hookSignature === lastHooksSubmitted.current) return
 
     const handle = window.setTimeout(() => {
       lastHooksSubmitted.current = hookSignature
-      void sendPatch<ActiveCheckinResponse>("/api/me/active-checkin", {
+
+      if (activeCheckin) {
+        void sendPatch<ActiveCheckinResponse>("/api/me/active-checkin", {
+          userId,
+          placeId,
+          hooks: hooksValue,
+        })
+          .then((response) => {
+            lastHooksSubmitted.current = null
+            if (!response) return
+            if (response.ok === false && response.code === "NO_ACTIVE_CHECKIN") {
+              setContext((prev) =>
+                prev ? { ...prev, activeCheckin: null } : prev,
+              )
+              return
+            }
+            if (response?.ok) {
+              setContext((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      activeCheckin: response.checkIn,
+                      placeProfile: prev.placeProfile
+                        ? {
+                            ...prev.placeProfile,
+                            lastHooks:
+                              hooksValue.length > 0 ? hooksValue : null,
+                          }
+                        : prev.placeProfile,
+                    }
+                  : prev,
+              )
+            }
+          })
+          .catch(() => {
+            lastHooksSubmitted.current = null
+          })
+        return
+      }
+
+      const nextHooks = hooksValue.length > 0 ? hooksValue : null
+      void sendPatch<PlaceProfileResponse>("/api/me/place-profile", {
         userId,
         placeId,
-        hooks: hooksValue,
+        lastHooks: nextHooks,
       })
         .then((response) => {
           lastHooksSubmitted.current = null
-          if (!response) return
-          if (response.ok === false && response.code === "NO_ACTIVE_CHECKIN") {
-            setContext((prev) =>
-              prev ? { ...prev, activeCheckin: null } : prev,
-            )
-            return
-          }
-          if (response?.ok) {
-            setContext((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    activeCheckin: response.checkIn,
-                    placeProfile: prev.placeProfile
-                      ? {
-                          ...prev.placeProfile,
-                          lastHooks:
-                            hooksValue.length > 0 ? hooksValue : null,
-                        }
-                      : prev.placeProfile,
-                  }
-                : prev,
-            )
+          if (response?.placeProfile) {
+            updatePlaceProfileInContext(response.placeProfile)
           }
         })
-        .catch(() => {})
+        .catch(() => {
+          lastHooksSubmitted.current = null
+        })
     }, AUTOSAVE_DELAY)
 
     return () => window.clearTimeout(handle)
-  }, [activeCheckin, hasSeededHooks, hooksValue, placeId, sendPatch, userId])
+  }, [
+    accountDisabled,
+    activeCheckin,
+    context?.placeProfile?.lastHooks,
+    hasSeededHooks,
+    hooksValue,
+    placeId,
+    sendPatch,
+    updatePlaceProfileInContext,
+    userId,
+  ])
 
   useEffect(() => {
     if (!hasPlaceProfile) return
@@ -956,9 +991,16 @@ export function ExpandedProfileSheet({
                     <section className="space-y-12">
                       <div className="space-y-6">
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-zinc-400">
-                            {t(locale, "profile.mood.label")}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs uppercase tracking-wide text-zinc-400">
+                              {t(locale, "profile.mood.label")}
+                            </p>
+                            {!hasActiveCheckin ? (
+                              <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
+                                {t(locale, "profile.editor.checkInRequired")}
+                              </span>
+                            ) : null}
+                          </div>
                           <h2 className="text-2xl font-semibold text-white">
                             {t(locale, "profile.mood.title")}
                           </h2>
@@ -987,9 +1029,16 @@ export function ExpandedProfileSheet({
 
                       <div className="space-y-6">
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-zinc-400">
-                            {t(locale, "profile.recognizability.label")}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs uppercase tracking-wide text-zinc-400">
+                              {t(locale, "profile.recognizability.label")}
+                            </p>
+                            {!hasActiveCheckin ? (
+                              <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
+                                {t(locale, "profile.editor.checkInRequired")}
+                              </span>
+                            ) : null}
+                          </div>
                           <h2 className="text-2xl font-semibold text-white">
                             {t(locale, "profile.recognizability.title")}
                           </h2>
@@ -1020,16 +1069,10 @@ export function ExpandedProfileSheet({
                             {t(locale, "profile.hooks.helper")}
                           </h2>
                         </div>
-                        {!hasActiveCheckin ? (
-                          <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-zinc-300">
-                            {t(locale, "profile.hooks.disabled")}
-                          </span>
-                        ) : null}
                         <HooksPicker
                           locale={locale}
                           selected={hooksValue}
                           max={MAX_HOOKS}
-                          disabled={!hasActiveCheckin}
                           onChange={setHooksValue}
                         />
                       </div>
